@@ -1,0 +1,52 @@
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Virtual envs ----------------------------------------------------------
+.venv/
+venv/
+env/
+.uv/
+
+# --- Notebooks -------------------------------------------------------------
+.ipynb_checkpoints/
+
+# --- Data ------------------------------------------------------------------
+# Raw CMAPSS files are downloaded locally, never committed.
+data/raw/*
+!data/raw/.gitkeep
+data/processed/
+data/interim/
+
+# --- Models / artefacts ----------------------------------------------------
+models/
+*.pkl
+*.joblib
+*.h5
+*.onnx
+mlruns/
+mlartifacts/
+
+# --- IDE -------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
