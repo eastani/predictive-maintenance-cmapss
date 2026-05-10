@@ -128,6 +128,11 @@ predictive-maintenance-cmapss/
   analysis on FD001: trajectory length distribution, sensor variance,
   per-unit degradation curves, alignment to failure, and the empirical
   motivation for piecewise-linear RUL capping.
+* [`notebooks/02_baseline_rul.ipynb`](notebooks/02_baseline_rul.ipynb)
+  — Baseline RUL regressor on FD001 using rolling features and a
+  standard-scaled Ridge regression, evaluated with RMSE and the
+  asymmetric CMAPSS S-score. Establishes the floor that subsequent
+  models must demonstrably beat.
 
 The notebooks are kept paired with `.py` files in the
 [jupytext percent format][jupytext], so diffs are reviewable on GitHub.
@@ -141,8 +146,9 @@ The notebooks are kept paired with `.py` files in the
 - [x] Feature engineering: constant-sensor filter, piecewise-linear RUL,
       rolling statistics
 - [x] Exploratory data analysis notebook
+- [x] Baseline RUL regressor (Ridge regression) with RMSE / S-score evaluation
 - [ ] Operating-regime clustering for FD002 / FD004
-- [ ] Baseline RUL regressor (XGBoost) with cross-validation
+- [ ] Gradient-boosted RUL regressor (XGBoost) with cross-validation
 - [ ] LSTM sequence model with proper truncation handling
 - [ ] Plotly Dash live dashboard
 - [ ] Dockerised serving with a minimal REST API
