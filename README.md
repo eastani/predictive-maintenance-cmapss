@@ -122,11 +122,26 @@ predictive-maintenance-cmapss/
 └── .github/workflows/     # CI pipeline (lint, test, build)
 ```
 
+## Notebooks
+
+* [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb) — Exploratory data
+  analysis on FD001: trajectory length distribution, sensor variance,
+  per-unit degradation curves, alignment to failure, and the empirical
+  motivation for piecewise-linear RUL capping.
+
+The notebooks are kept paired with `.py` files in the
+[jupytext percent format][jupytext], so diffs are reviewable on GitHub.
+
+[jupytext]: https://jupytext.readthedocs.io/
+
 ## Roadmap
 
 - [x] CMAPSS data loader with strict schema validation
 - [x] Project skeleton, CI, and packaging
-- [ ] Feature engineering: rolling statistics + operating-regime clustering
+- [x] Feature engineering: constant-sensor filter, piecewise-linear RUL,
+      rolling statistics
+- [x] Exploratory data analysis notebook
+- [ ] Operating-regime clustering for FD002 / FD004
 - [ ] Baseline RUL regressor (XGBoost) with cross-validation
 - [ ] LSTM sequence model with proper truncation handling
 - [ ] Plotly Dash live dashboard

@@ -3,10 +3,11 @@
 # download_data.sh — Fetch the NASA CMAPSS turbofan dataset into data/raw/.
 #
 # CMAPSS is hosted by NASA's Prognostics Center of Excellence. Direct URLs
-# have changed over the years, so this script tries a list of known mirrors
-# in turn and falls back to clear manual instructions if all of them fail.
+# at NASA have changed over the years and the official zip is occasionally
+# unreachable, so this script first tries individual files from a known
+# good GitHub mirror and falls back to clear manual instructions.
 #
-# After a successful run, data/raw/ should contain at least:
+# After a successful run, data/raw/ should contain:
 #   train_FD001.txt  test_FD001.txt  RUL_FD001.txt
 #   train_FD002.txt  test_FD002.txt  RUL_FD002.txt
 #   train_FD003.txt  test_FD003.txt  RUL_FD003.txt
@@ -18,54 +19,57 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="${REPO_ROOT}/data/raw"
 mkdir -p "${DEST}"
 
-CANDIDATES=(
-    "https://data.nasa.gov/download/ff5v-kuh6/application%2Fzip"
-    "https://github.com/jiaxiang-cheng/PyTorch-LSTM-for-RUL-Prediction/raw/main/CMAPSSData.zip"
-)
-
-ARCHIVE="${DEST}/CMAPSSData.zip"
-
-if compgen -G "${DEST}/train_FD00*.txt" > /dev/null; then
+if compgen -G "${DEST}/train_FD00*.txt" > /dev/null \
+   && compgen -G "${DEST}/test_FD00*.txt" > /dev/null \
+   && compgen -G "${DEST}/RUL_FD00*.txt" > /dev/null; then
     echo "✓ CMAPSS files already present in ${DEST}; nothing to do."
     exit 0
 fi
 
-for url in "${CANDIDATES[@]}"; do
-    echo "→ Trying: ${url}"
-    if curl -fsSL --retry 2 --max-time 60 -o "${ARCHIVE}" "${url}"; then
-        echo "  Download OK."
-        break
+# A community mirror that hosts each file individually under data/.
+MIRROR_BASE="https://raw.githubusercontent.com/egehanyorulmaz/nasa-turbofan-engine-rul-prediction/main/data"
+
+ALL_FILES=(
+    train_FD001 train_FD002 train_FD003 train_FD004
+    test_FD001  test_FD002  test_FD003  test_FD004
+    RUL_FD001   RUL_FD002   RUL_FD003   RUL_FD004
+)
+
+failed=0
+for stem in "${ALL_FILES[@]}"; do
+    target="${DEST}/${stem}.txt"
+    if [[ -s "${target}" ]]; then
+        echo "  ✓ ${stem}.txt already present"
+        continue
     fi
-    echo "  Failed, trying next mirror…"
+    if curl -fsSL --retry 2 --max-time 60 -o "${target}" "${MIRROR_BASE}/${stem}.txt"; then
+        echo "  ✓ ${stem}.txt"
+    else
+        echo "  ✗ ${stem}.txt"
+        rm -f "${target}"
+        failed=1
+    fi
 done
 
-if [[ ! -s "${ARCHIVE}" ]]; then
+if [[ "${failed}" -ne 0 ]]; then
     cat <<'MSG'
-✗ Automatic download failed.
+
+✗ One or more files failed to download.
 
 Manual fallback:
   1. Visit NASA's Prognostics Data Repository:
        https://www.nasa.gov/intelligent-systems-division/
-  2. Download the "Turbofan Engine Degradation Simulation" data.
-  3. Unzip the archive and copy all train_*.txt, test_*.txt and
+     or any community mirror that hosts the original "Turbofan Engine
+     Degradation Simulation Data Set" zip.
+  2. Unzip the archive and copy all train_*.txt, test_*.txt and
      RUL_*.txt files into:
        data/raw/
 
-Then re-run this script (or simply re-run the test suite).
+Then re-run this script (or the test suite).
 MSG
     exit 1
 fi
 
-echo "→ Extracting…"
-unzip -o "${ARCHIVE}" -d "${DEST}" > /dev/null
-
-# Some archives nest the txt files inside a CMAPSSData/ folder; flatten if so.
-if [[ -d "${DEST}/CMAPSSData" ]]; then
-    mv "${DEST}/CMAPSSData/"*.txt "${DEST}/" 2>/dev/null || true
-    rmdir "${DEST}/CMAPSSData" 2>/dev/null || true
-fi
-
-rm -f "${ARCHIVE}"
-
-echo "✓ CMAPSS files extracted to ${DEST}:"
-ls -1 "${DEST}"/train_FD00*.txt 2>/dev/null | sed 's/^/    /' || true
+echo
+echo "✓ CMAPSS files in ${DEST}:"
+ls -1 "${DEST}"/*.txt | sed 's/^/    /'
