@@ -28,6 +28,7 @@ from sklearn.preprocessing import StandardScaler
 
 __all__ = [
     "build_baseline_regressor",
+    "build_gradient_boosted_regressor",
     "make_xy",
     "rmse",
     "s_score",
@@ -95,6 +96,86 @@ def build_baseline_regressor(*, alpha: float = 1.0) -> Pipeline:
         steps=[
             ("scaler", StandardScaler()),
             ("ridge", Ridge(alpha=alpha)),
+        ]
+    )
+
+
+def build_gradient_boosted_regressor(
+    *,
+    n_estimators: int = 500,
+    max_depth: int = 6,
+    learning_rate: float = 0.05,
+    subsample: float = 0.9,
+    colsample_bytree: float = 0.8,
+    random_state: int | None = 42,
+) -> Pipeline:
+    """Build a gradient-boosted RUL regression pipeline.
+
+    Wraps :class:`xgboost.XGBRegressor` in a Pipeline with the same
+    ``StandardScaler`` head used by the baseline so that features
+    arriving at the booster have a consistent scale. Although tree-based
+    learners are scale-invariant in principle, the scaler keeps later
+    diagnostics (feature importance, partial dependence plots) directly
+    comparable across the two pipelines.
+
+    The default hyper-parameters are deliberately moderate — large
+    enough to clearly outperform the linear baseline on FD001, small
+    enough to fit on a laptop in seconds — and serve as a starting
+    point for hyper-parameter search.
+
+    Args:
+        n_estimators: Number of boosting rounds. Defaults to ``500``.
+        max_depth: Maximum tree depth. Defaults to ``6``.
+        learning_rate: Boosting step size. Defaults to ``0.05``.
+        subsample: Row subsample ratio per boosting round.
+            Defaults to ``0.9``.
+        colsample_bytree: Column subsample ratio per tree.
+            Defaults to ``0.8``.
+        random_state: Random seed for reproducibility. Defaults to ``42``.
+
+    Returns:
+        A scikit-learn :class:`Pipeline` ready for ``fit`` / ``predict``.
+
+    Raises:
+        ImportError: If the optional ``xgboost`` dependency is not
+            installed. Install it with ``pip install -e '.[boost]'``.
+        ValueError: If any numeric hyper-parameter is outside its valid
+            range (positive integers / probabilities in ``(0, 1]``).
+    """
+    if n_estimators <= 0:
+        raise ValueError(f"n_estimators must be strictly positive, got {n_estimators}.")
+    if max_depth <= 0:
+        raise ValueError(f"max_depth must be strictly positive, got {max_depth}.")
+    if learning_rate <= 0:
+        raise ValueError(f"learning_rate must be strictly positive, got {learning_rate}.")
+    if not 0 < subsample <= 1:
+        raise ValueError(f"subsample must lie in (0, 1], got {subsample}.")
+    if not 0 < colsample_bytree <= 1:
+        raise ValueError(f"colsample_bytree must lie in (0, 1], got {colsample_bytree}.")
+
+    try:
+        from xgboost import XGBRegressor
+    except ImportError as exc:  # pragma: no cover - exercised only when extras missing
+        raise ImportError(
+            "XGBoost is required for build_gradient_boosted_regressor. "
+            "Install with: pip install -e '.[boost]'"
+        ) from exc
+
+    booster = XGBRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=learning_rate,
+        subsample=subsample,
+        colsample_bytree=colsample_bytree,
+        random_state=random_state,
+        objective="reg:squarederror",
+        tree_method="hist",
+    )
+
+    return Pipeline(
+        steps=[
+            ("scaler", StandardScaler()),
+            ("xgboost", booster),
         ]
     )
 

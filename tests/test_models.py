@@ -7,7 +7,13 @@ import pandas as pd
 import pytest
 from sklearn.pipeline import Pipeline
 
-from pdm.models import build_baseline_regressor, make_xy, rmse, s_score
+from pdm.models import (
+    build_baseline_regressor,
+    build_gradient_boosted_regressor,
+    make_xy,
+    rmse,
+    s_score,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -78,6 +84,52 @@ class TestBuildBaselineRegressor:
     def test_negative_alpha_raises(self, bad_alpha: float) -> None:
         with pytest.raises(ValueError, match="non-negative"):
             build_baseline_regressor(alpha=bad_alpha)
+
+
+# --------------------------------------------------------------------------- #
+# build_gradient_boosted_regressor
+# --------------------------------------------------------------------------- #
+xgboost = pytest.importorskip("xgboost", reason="optional 'boost' extra not installed")
+
+
+class TestBuildGradientBoostedRegressor:
+    def test_returns_pipeline_with_expected_steps(self) -> None:
+        model = build_gradient_boosted_regressor(n_estimators=10, max_depth=3)
+        assert isinstance(model, Pipeline)
+        assert [name for name, _ in model.steps] == ["scaler", "xgboost"]
+
+    def test_can_fit_and_predict(self) -> None:
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(120, 5))
+        true_w = np.array([2.0, -1.0, 0.5, 3.0, 0.1])
+        y = X @ true_w + rng.normal(scale=0.1, size=120)
+
+        model = build_gradient_boosted_regressor(n_estimators=80, max_depth=4, learning_rate=0.1)
+        model.fit(X, y)
+        preds = model.predict(X)
+        assert preds.shape == (120,)
+        # XGBoost should easily under-fit a near-linear target with this size.
+        assert rmse(y, preds) < 0.5
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"n_estimators": 0},
+            {"n_estimators": -1},
+            {"max_depth": 0},
+            {"max_depth": -3},
+            {"learning_rate": 0.0},
+            {"learning_rate": -0.01},
+            {"subsample": 0.0},
+            {"subsample": -0.1},
+            {"subsample": 1.5},
+            {"colsample_bytree": 0.0},
+            {"colsample_bytree": 1.5},
+        ],
+    )
+    def test_invalid_hyperparameters_raise(self, kwargs: dict[str, float]) -> None:
+        with pytest.raises(ValueError):
+            build_gradient_boosted_regressor(**kwargs)
 
 
 # --------------------------------------------------------------------------- #

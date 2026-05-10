@@ -133,6 +133,11 @@ predictive-maintenance-cmapss/
   standard-scaled Ridge regression, evaluated with RMSE and the
   asymmetric CMAPSS S-score. Establishes the floor that subsequent
   models must demonstrably beat.
+* [`notebooks/03_xgboost_rul.ipynb`](notebooks/03_xgboost_rul.ipynb)
+  — Benchmarks an XGBoost gradient-boosted regressor against the Ridge
+  baseline on identical features. Shows the honest result that on
+  FD001's single regime / single fault mode, the gap is narrow, and
+  uses feature-importance diagnostics to corroborate the EDA findings.
 
 The notebooks are kept paired with `.py` files in the
 [jupytext percent format][jupytext], so diffs are reviewable on GitHub.
@@ -147,8 +152,9 @@ The notebooks are kept paired with `.py` files in the
       rolling statistics
 - [x] Exploratory data analysis notebook
 - [x] Baseline RUL regressor (Ridge regression) with RMSE / S-score evaluation
+- [x] Gradient-boosted RUL regressor (XGBoost) with feature-importance diagnostics
 - [ ] Operating-regime clustering for FD002 / FD004
-- [ ] Gradient-boosted RUL regressor (XGBoost) with cross-validation
+- [ ] Cross-subset evaluation showing where XGBoost actually wins
 - [ ] LSTM sequence model with proper truncation handling
 - [ ] Plotly Dash live dashboard
 - [ ] Dockerised serving with a minimal REST API
