@@ -26,6 +26,10 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install OpenMP runtime (macOS only)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
       - name: Set up Python
         run: uv python install ${{ matrix.python-version }}
 
