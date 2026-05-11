@@ -28,6 +28,34 @@ notebooks, and production-style Python package structure.
 | Engineering | Importable `pdm` package, pytest coverage reporting, Ruff, GitHub Actions CI, `uv` lockfile |
 | Next step | Multi-regime FD002/FD004 evaluation, dashboard, and serving API |
 
+## Results preview
+
+The figures below are exported from the executed notebooks in this repository.
+
+### Sensor degradation aligned to failure
+
+![FD001 sensor 11 trajectories aligned to failure](docs/assets/fd001_sensor11_aligned_to_failure.png)
+
+Sensor 11 shows a visible drift pattern as units approach failure, which
+supports the choice to focus model capacity on the observable degradation
+window.
+
+### Ridge baseline vs. XGBoost
+
+![FD001 Ridge baseline vs XGBoost prediction scatter](docs/assets/fd001_ridge_vs_xgboost_predictions.png)
+
+The FD001 benchmark compares Ridge and XGBoost on identical rolling features.
+The result is intentionally reported as a close head-to-head rather than a
+headline-only model win.
+
+### Feature importance diagnostics
+
+![FD001 XGBoost feature importance](docs/assets/fd001_xgboost_feature_importance.png)
+
+The top XGBoost features line up with the high-pressure-compressor sensor
+signals surfaced during exploratory analysis, giving the model results a
+domain-level sanity check.
+
 ## Why this project
 
 Industrial predictive maintenance combines three problems that are usually
