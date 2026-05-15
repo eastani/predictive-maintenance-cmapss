@@ -1,0 +1,14 @@
+.git
+.github
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv
+__pycache__
+*.egg-info
+*.joblib
+*.pyc
+coverage.xml
+data/raw/*
+docs/assets/*
+notebooks/*

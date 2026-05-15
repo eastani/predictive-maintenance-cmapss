@@ -32,6 +32,8 @@ env/
 # Raw CMAPSS files are downloaded locally, never committed.
 data/raw/*
 !data/raw/.gitkeep
+reports/*
+!reports/.gitkeep
 data/processed/
 data/interim/
 

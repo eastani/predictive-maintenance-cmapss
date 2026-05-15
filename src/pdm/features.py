@@ -23,14 +23,40 @@ Three transformations are exposed:
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 __all__ = [
+    "add_operating_regime",
     "add_rolling_features",
+    "apply_regime_normalizer",
     "clip_rul",
     "drop_constant_sensors",
+    "fit_operating_regime_model",
+    "fit_regime_normalizer",
 ]
+
+
+@dataclass(frozen=True)
+class OperatingRegimeModel:
+    """K-means operating-regime assignment fitted on operational settings."""
+
+    setting_columns: tuple[str, ...]
+    centers: np.ndarray
+    regime_column: str = "op_regime"
+
+
+@dataclass(frozen=True)
+class RegimeNormalizer:
+    """Per-regime normalization statistics for sensor channels."""
+
+    columns: tuple[str, ...]
+    regime_column: str
+    means: pd.DataFrame
+    stds: pd.DataFrame
+    suffix: str = "_regime_z"
 
 
 def drop_constant_sensors(
@@ -64,6 +90,138 @@ def drop_constant_sensors(
     variances = df[list(candidate_columns)].var(numeric_only=True)
     dropped = sorted(variances[variances < threshold].index.tolist())
     return df.drop(columns=dropped), dropped
+
+
+def _default_setting_columns(df: pd.DataFrame) -> list[str]:
+    return [column for column in df.columns if column.startswith("op_setting_")]
+
+
+def fit_operating_regime_model(
+    df: pd.DataFrame,
+    *,
+    n_regimes: int = 6,
+    setting_columns: Sequence[str] | None = None,
+    random_state: int = 42,
+    regime_column: str = "op_regime",
+) -> OperatingRegimeModel:
+    """Fit a K-means model over operational settings.
+
+    FD002 and FD004 contain multiple operating conditions. Assigning each
+    row to an operating regime lets downstream feature engineering normalize
+    sensors within comparable operating states instead of mixing regimes.
+
+    Args:
+        df: Input long-format DataFrame.
+        n_regimes: Number of operating regimes to identify.
+        setting_columns: Operational-setting columns. When ``None``, columns
+            whose names start with ``"op_setting_"`` are used.
+        random_state: K-means random seed.
+        regime_column: Name to use when applying this model.
+
+    Returns:
+        Fitted :class:`OperatingRegimeModel` containing cluster centers.
+
+    Raises:
+        ValueError: If no setting columns are available, or ``n_regimes`` is
+            invalid for the number of rows.
+    """
+    if n_regimes <= 0:
+        raise ValueError(f"n_regimes must be strictly positive, got {n_regimes}.")
+    if setting_columns is None:
+        setting_columns = _default_setting_columns(df)
+    if not setting_columns:
+        raise ValueError("No operational-setting columns found.")
+    if n_regimes > len(df):
+        raise ValueError(f"n_regimes={n_regimes} exceeds number of rows ({len(df)}).")
+
+    try:
+        from sklearn.cluster import KMeans
+    except ImportError as exc:  # pragma: no cover - scikit-learn is a core dependency
+        raise ImportError("scikit-learn is required for operating-regime clustering.") from exc
+
+    settings = df[list(setting_columns)].to_numpy(dtype=np.float64, copy=True)
+    model = KMeans(n_clusters=n_regimes, random_state=random_state, n_init="auto")
+    model.fit(settings)
+    centers = np.asarray(model.cluster_centers_, dtype=np.float64)
+    return OperatingRegimeModel(
+        setting_columns=tuple(setting_columns),
+        centers=centers,
+        regime_column=regime_column,
+    )
+
+
+def add_operating_regime(df: pd.DataFrame, model: OperatingRegimeModel) -> pd.DataFrame:
+    """Append an operating-regime label using a fitted regime model."""
+    missing = [column for column in model.setting_columns if column not in df.columns]
+    if missing:
+        raise KeyError(f"Missing operational-setting columns: {missing}")
+
+    settings = df[list(model.setting_columns)].to_numpy(dtype=np.float64, copy=True)
+    distances = ((settings[:, None, :] - model.centers[None, :, :]) ** 2).sum(axis=2)
+    labels = np.argmin(distances, axis=1).astype("int64")
+
+    out = df.copy()
+    out[model.regime_column] = labels
+    return out
+
+
+def fit_regime_normalizer(
+    df: pd.DataFrame,
+    *,
+    columns: Sequence[str] | None = None,
+    regime_column: str = "op_regime",
+    suffix: str = "_regime_z",
+) -> RegimeNormalizer:
+    """Fit per-regime mean/std statistics for sensor normalization."""
+    if regime_column not in df.columns:
+        raise KeyError(f"Missing regime column: {regime_column}")
+    if columns is None:
+        columns = [column for column in df.columns if column.startswith("sensor_")]
+    if not columns:
+        raise ValueError("No candidate columns found for regime normalization.")
+
+    grouped = df.groupby(regime_column, sort=True)[list(columns)]
+    means = grouped.mean()
+    stds = grouped.std(ddof=0).replace(0.0, 1.0).fillna(1.0)
+    return RegimeNormalizer(
+        columns=tuple(columns),
+        regime_column=regime_column,
+        means=means,
+        stds=stds,
+        suffix=suffix,
+    )
+
+
+def apply_regime_normalizer(
+    df: pd.DataFrame,
+    normalizer: RegimeNormalizer,
+) -> pd.DataFrame:
+    """Append per-regime z-score columns using fitted normalization stats."""
+    if normalizer.regime_column not in df.columns:
+        raise KeyError(f"Missing regime column: {normalizer.regime_column}")
+
+    missing_columns = [column for column in normalizer.columns if column not in df.columns]
+    if missing_columns:
+        raise KeyError(f"Missing normalization columns: {missing_columns}")
+
+    regimes = set(df[normalizer.regime_column].unique())
+    known_regimes = set(normalizer.means.index)
+    unknown = sorted(regimes - known_regimes)
+    if unknown:
+        raise ValueError(f"Unknown operating regimes: {unknown}")
+
+    out = df.copy()
+    for column in normalizer.columns:
+        out[f"{column}{normalizer.suffix}"] = [
+            (float(value) - float(normalizer.means.loc[regime, column]))
+            / float(normalizer.stds.loc[regime, column])
+            for regime, value in zip(
+                out[normalizer.regime_column],
+                out[column],
+                strict=True,
+            )
+        ]
+    return out
 
 
 def clip_rul(rul: pd.Series, *, max_rul: int = 125) -> pd.Series:

@@ -7,9 +7,13 @@ import pandas as pd
 import pytest
 
 from pdm.features import (
+    add_operating_regime,
     add_rolling_features,
+    apply_regime_normalizer,
     clip_rul,
     drop_constant_sensors,
+    fit_operating_regime_model,
+    fit_regime_normalizer,
 )
 
 
@@ -156,3 +160,61 @@ class TestAddRollingFeatures:
         df = pd.DataFrame({"unit_id": [1, 1], "cycle": [1, 2]})
         with pytest.raises(ValueError, match="No candidate columns"):
             add_rolling_features(df)
+
+
+# --------------------------------------------------------------------------- #
+# operating-regime preprocessing
+# --------------------------------------------------------------------------- #
+def _build_multi_regime_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "unit_id": [1, 1, 2, 2, 3, 3, 4, 4],
+            "cycle": [1, 2, 1, 2, 1, 2, 1, 2],
+            "op_setting_1": [0.0, 0.1, 0.0, 0.1, 10.0, 10.1, 10.0, 10.1],
+            "op_setting_2": [0.0, 0.1, 0.0, 0.1, 10.0, 10.1, 10.0, 10.1],
+            "sensor_02": [1.0, 2.0, 1.5, 2.5, 100.0, 101.0, 99.0, 102.0],
+            "sensor_03": [10.0, 11.0, 9.0, 12.0, 50.0, 52.0, 49.0, 53.0],
+        }
+    )
+
+
+class TestOperatingRegimePreprocessing:
+    def test_fit_and_apply_operating_regime_model(self) -> None:
+        df = _build_multi_regime_df()
+        model = fit_operating_regime_model(df, n_regimes=2, random_state=0)
+        out = add_operating_regime(df, model)
+
+        assert "op_regime" in out.columns
+        assert out["op_regime"].nunique() == 2
+        # The low-setting and high-setting blocks should not be assigned to
+        # the same operating regime.
+        low_regime = out.loc[out["op_setting_1"] < 1.0, "op_regime"].mode().iloc[0]
+        high_regime = out.loc[out["op_setting_1"] > 1.0, "op_regime"].mode().iloc[0]
+        assert low_regime != high_regime
+
+    def test_regime_normalizer_adds_z_score_columns(self) -> None:
+        df = _build_multi_regime_df()
+        model = fit_operating_regime_model(df, n_regimes=2, random_state=0)
+        labelled = add_operating_regime(df, model)
+        normalizer = fit_regime_normalizer(labelled, columns=["sensor_02", "sensor_03"])
+
+        out = apply_regime_normalizer(labelled, normalizer)
+
+        assert "sensor_02_regime_z" in out.columns
+        assert "sensor_03_regime_z" in out.columns
+        means = out.groupby("op_regime")["sensor_02_regime_z"].mean()
+        np.testing.assert_allclose(means.to_numpy(), np.zeros(len(means)), atol=1e-12)
+
+    def test_operating_regime_requires_setting_columns(self) -> None:
+        with pytest.raises(ValueError, match="No operational-setting"):
+            fit_operating_regime_model(pd.DataFrame({"sensor_02": [1.0, 2.0]}))
+
+    def test_regime_normalizer_rejects_unknown_regime(self) -> None:
+        df = _build_multi_regime_df()
+        model = fit_operating_regime_model(df, n_regimes=2, random_state=0)
+        labelled = add_operating_regime(df, model)
+        normalizer = fit_regime_normalizer(labelled, columns=["sensor_02"])
+        labelled.loc[0, "op_regime"] = 99
+
+        with pytest.raises(ValueError, match="Unknown operating regimes"):
+            apply_regime_normalizer(labelled, normalizer)
