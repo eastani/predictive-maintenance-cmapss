@@ -2,7 +2,8 @@
 
 Run after downloading CMAPSS:
 
-    uv run python scripts/train_fd001_artifact.py --data-dir data/raw --out artifacts/fd001-ridge.joblib
+    uv run python scripts/train_fd001_artifact.py --data-dir data/raw \
+        --out artifacts/fd001-ridge.joblib
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from pdm.serving import ModelArtifact, save_model_artifact
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, default=Path("data/raw"))
     parser.add_argument("--out", type=Path, default=Path("artifacts/fd001-ridge.joblib"))
@@ -25,6 +27,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Train and persist a Ridge baseline model artifact."""
     args = parse_args()
     data = load_subset("FD001", args.data_dir)
     train, dropped = drop_constant_sensors(data.train)
@@ -33,9 +36,7 @@ def main() -> None:
     sensor_columns = [column for column in SENSOR_COLUMNS if column not in dropped]
     train = add_rolling_features(train, windows=(5, 10, 20), columns=sensor_columns)
     feature_columns = tuple(
-        column
-        for column in train.columns
-        if column.startswith("sensor_") and column != "RUL"
+        column for column in train.columns if column.startswith("sensor_") and column != "RUL"
     )
 
     x, y = make_xy(train, feature_columns)

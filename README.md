@@ -158,6 +158,29 @@ PDM_MODEL_PATH=artifacts/fd001-ridge.joblib uv run uvicorn pdm.api:app --reload
 uv run jupyter lab notebooks/01_eda.ipynb
 ```
 
+## Cross-Subset Evaluation
+
+FD001 is intentionally simple: one operating condition and one fault mode.
+FD002 and FD004 mix six operating conditions, so the evaluation script enables
+operating-regime clustering and per-regime sensor normalization for those
+subsets before fitting the same model interface.
+
+```bash
+# Ridge baseline across all four subsets
+uv run python scripts/evaluate_subsets.py --data-dir data/raw
+
+# Ridge + XGBoost, writing a CSV report
+uv run python scripts/evaluate_subsets.py \
+  --data-dir data/raw \
+  --with-xgboost \
+  --out reports/cross_subset_results.csv
+```
+
+The report includes RMSE, CMAPSS S-score, sample counts, feature counts, and
+whether regime-aware features were enabled. This is the benchmark harness for
+showing where model capacity matters, instead of claiming that XGBoost wins
+everywhere.
+
 ## Serving API
 
 The API serves engineered feature vectors against a persisted
@@ -204,6 +227,7 @@ predictive-maintenance-cmapss/
 |-- notebooks/             # Exploratory and benchmark notebooks
 |-- scripts/               # Data download and operational helpers
 |-- data/raw/              # Untracked; CMAPSS files land here
+|-- reports/               # Optional generated benchmark outputs
 |-- Dockerfile             # Minimal API container
 `-- .github/workflows/     # CI pipeline
 ```
@@ -241,7 +265,8 @@ The notebooks are kept paired with `.py` files in the
 - [x] Gradient-boosted RUL regressor (XGBoost) with feature-importance diagnostics
 - [x] Operating-regime clustering for FD002 / FD004
 - [x] Dockerised serving with a minimal REST API
-- [ ] Cross-subset evaluation showing where XGBoost actually wins
+- [x] Cross-subset evaluation harness for FD001-FD004
+- [ ] Published cross-subset result table showing where XGBoost actually wins
 - [ ] LSTM sequence model with proper truncation handling
 - [ ] Plotly Dash live dashboard
 - [ ] Documentation site (MkDocs Material)
