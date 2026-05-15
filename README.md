@@ -24,9 +24,11 @@ notebooks, and production-style Python package structure.
 | Dataset | NASA CMAPSS FD001-FD004 turbofan run-to-failure data |
 | Pipeline | Strict schema validation, RUL labelling, rolling features, model evaluation |
 | Models | Ridge baseline and XGBoost RUL regressor on identical features |
+| Multi-regime support | Operating-regime clustering and per-regime sensor normalization for FD002/FD004 |
+| Serving | FastAPI inference service, model artifact format, Dockerfile, and API tests |
 | Evidence | Executed notebooks with RMSE, asymmetric S-score, and feature diagnostics |
 | Engineering | Importable `pdm` package, pytest coverage reporting, Ruff, GitHub Actions CI, `uv` lockfile |
-| Next step | Multi-regime FD002/FD004 evaluation, dashboard, and serving API |
+| Next step | Cross-subset FD002/FD004 evaluation, dashboard, and model monitoring |
 
 ## Results preview
 
@@ -93,7 +95,7 @@ FD001-FD004
 | - constant-sensor filter    |
 | - rolling statistics        |
 | - per-unit windows          |
-| - normalisation             |
+| - regime-aware normalisation|
 +-------------+---------------+
               |
               v
@@ -106,8 +108,8 @@ FD001-FD004
               |
               v
 +-------------+---------------+----------------+
-| tests + CI  | notebooks     | dashboard/API   |
-| pytest      | benchmarks    | roadmap items   |
+| pdm.serving | pdm.api       | tests + CI      |
+| artifacts   | FastAPI       | pytest/mypy     |
 +-------------+---------------+----------------+
 ```
 
@@ -146,9 +148,47 @@ uv sync
 # 3. Run the test suite
 uv run pytest
 
-# 4. Launch the EDA notebook
+# 4. Train a local model artifact for the API
+uv run python scripts/train_fd001_artifact.py --data-dir data/raw --out artifacts/fd001-ridge.joblib
+
+# 5. Launch the inference API
+PDM_MODEL_PATH=artifacts/fd001-ridge.joblib uv run uvicorn pdm.api:app --reload
+
+# 6. Launch the EDA notebook
 uv run jupyter lab notebooks/01_eda.ipynb
 ```
+
+## Serving API
+
+The API serves engineered feature vectors against a persisted
+`ModelArtifact`. This keeps the boundary explicit: ingestion and feature
+engineering can evolve independently from the inference service.
+
+```bash
+# Build the container
+docker build -t predictive-maintenance-cmapss .
+
+# Run with a mounted model artifact
+docker run --rm -p 8000:8000 \
+  -e PDM_MODEL_PATH=/models/fd001-ridge.joblib \
+  -v "$PWD/artifacts:/models:ro" \
+  predictive-maintenance-cmapss
+
+# Health check
+curl http://localhost:8000/health
+```
+
+Schema example:
+
+```bash
+curl -X POST http://localhost:8000/predict-rul \
+  -H "Content-Type: application/json" \
+  -d '{"unit_id": 1, "cycle": 120, "features": {"sensor_02_mean_5": 0.1}}'
+```
+
+Real requests must provide every feature column stored in the trained
+artifact. Missing feature values return a 400 response rather than silently
+filling defaults.
 
 ## Project layout
 
@@ -156,12 +196,15 @@ uv run jupyter lab notebooks/01_eda.ipynb
 predictive-maintenance-cmapss/
 |-- src/pdm/               # Library code (importable as `pdm`)
 |   |-- data.py            # CMAPSS loader + RUL labelling
-|   |-- features.py        # Rolling statistics and feature engineering
-|   `-- models.py          # RUL regression models and metrics
+|   |-- features.py        # Rolling statistics, regime features, normalization
+|   |-- models.py          # RUL regression models and metrics
+|   |-- serving.py         # Model artifact loading and prediction helpers
+|   `-- api.py             # FastAPI inference service
 |-- tests/                 # pytest unit and integration tests
 |-- notebooks/             # Exploratory and benchmark notebooks
 |-- scripts/               # Data download and operational helpers
 |-- data/raw/              # Untracked; CMAPSS files land here
+|-- Dockerfile             # Minimal API container
 `-- .github/workflows/     # CI pipeline
 ```
 
@@ -196,11 +239,11 @@ The notebooks are kept paired with `.py` files in the
 - [x] Exploratory data analysis notebook
 - [x] Baseline RUL regressor (Ridge regression) with RMSE / S-score evaluation
 - [x] Gradient-boosted RUL regressor (XGBoost) with feature-importance diagnostics
-- [ ] Operating-regime clustering for FD002 / FD004
+- [x] Operating-regime clustering for FD002 / FD004
+- [x] Dockerised serving with a minimal REST API
 - [ ] Cross-subset evaluation showing where XGBoost actually wins
 - [ ] LSTM sequence model with proper truncation handling
 - [ ] Plotly Dash live dashboard
-- [ ] Dockerised serving with a minimal REST API
 - [ ] Documentation site (MkDocs Material)
 
 ## License
