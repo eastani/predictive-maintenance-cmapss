@@ -72,9 +72,10 @@ class EvaluationResult:
 
 def _last_test_cycle(test: pd.DataFrame, test_rul: pd.DataFrame) -> pd.DataFrame:
     last_cycle_index = test.groupby("unit_id")["cycle"].transform("max") == test["cycle"]
-    final = test[last_cycle_index].sort_values("unit_id").reset_index(drop=True)
+    final = test[last_cycle_index].sort_values("unit_id").reset_index(drop=True).copy()
     aligned_rul = test_rul.set_index("unit_id").loc[final["unit_id"]]["RUL"].to_numpy()
-    return final.assign(RUL=aligned_rul)
+    final["RUL"] = aligned_rul
+    return final
 
 
 def _feature_columns(df: pd.DataFrame) -> tuple[str, ...]:
