@@ -181,6 +181,25 @@ whether regime-aware features were enabled. This is the benchmark harness for
 showing where model capacity matters, instead of claiming that XGBoost wins
 everywhere.
 
+Latest measured results:
+
+| Subset | Model | RMSE | S-score | Features | Regime-aware |
+| ------ | ----- | ---: | ------: | -------: | ------------ |
+| FD001 | Ridge | 18.27 | 592.60 | 105 | No |
+| FD001 | XGBoost | 18.23 | 814.84 | 105 | No |
+| FD002 | Ridge | 29.72 | 15,282.53 | 294 | Yes |
+| FD002 | XGBoost | 28.21 | 11,269.47 | 294 | Yes |
+| FD003 | Ridge | 19.17 | 720.01 | 112 | No |
+| FD003 | XGBoost | 18.72 | 1,412.19 | 112 | No |
+| FD004 | Ridge | 30.68 | 6,946.85 | 294 | Yes |
+| FD004 | XGBoost | 28.92 | 5,912.41 | 294 | Yes |
+
+The pattern is the useful part: XGBoost improves RMSE across all subsets, but
+only improves the asymmetric S-score on FD002 and FD004, where multiple
+operating regimes make non-linear interactions more valuable. On FD001 and
+FD003, the extra model capacity makes more costly late predictions even when
+RMSE moves slightly lower.
+
 ## Serving API
 
 The API serves engineered feature vectors against a persisted
