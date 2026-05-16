@@ -31,6 +31,7 @@ api = ["fastapi>=0.115", "uvicorn[standard]>=0.30"]
 viz = ["plotly>=5.20", "dash>=2.17"]
 boost = ["xgboost>=2.0"]
 deep = ["torch>=2.2"]
+docs = ["mkdocs>=1.6", "mkdocs-material>=9.5"]
 notebooks = ["jupyterlab>=4.2", "ipywidgets>=8.1", "matplotlib>=3.8"]
 dev = [
     "fastapi>=0.115",

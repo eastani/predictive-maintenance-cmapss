@@ -1,0 +1,71 @@
+# Benchmarks
+
+## Cross-Subset Results
+
+| Subset | Model | RMSE | S-score | Features | Regime-aware |
+| ------ | ----- | ---: | ------: | -------: | ------------ |
+| FD001 | Ridge | 18.27 | 592.60 | 105 | No |
+| FD001 | XGBoost | 18.23 | 814.84 | 105 | No |
+| FD002 | Ridge | 29.72 | 15,282.53 | 294 | Yes |
+| FD002 | XGBoost | 28.21 | 11,269.47 | 294 | Yes |
+| FD003 | Ridge | 19.17 | 720.01 | 112 | No |
+| FD003 | XGBoost | 18.72 | 1,412.19 | 112 | No |
+| FD004 | Ridge | 30.68 | 6,946.85 | 294 | Yes |
+| FD004 | XGBoost | 28.92 | 5,912.41 | 294 | Yes |
+
+XGBoost improves RMSE across all subsets, but it only improves the asymmetric
+S-score on FD002 and FD004. On FD001 and FD003, the extra model capacity
+creates more costly late predictions despite slightly lower RMSE.
+
+## Regime-Feature Ablation
+
+| Subset | Model | Regime-aware | RMSE | S-score | Features |
+| ------ | ----- | ------------ | ---: | ------: | -------: |
+| FD002 | Ridge | No | 30.64 | 17,835.85 | 147 |
+| FD002 | XGBoost | No | 30.05 | 12,840.71 | 147 |
+| FD002 | Ridge | Yes | 29.72 | 15,282.53 | 294 |
+| FD002 | XGBoost | Yes | 28.21 | 11,269.47 | 294 |
+| FD004 | Ridge | No | 31.71 | 7,861.98 | 147 |
+| FD004 | XGBoost | No | 31.49 | 8,825.88 | 147 |
+| FD004 | Ridge | Yes | 30.68 | 6,946.85 | 294 |
+| FD004 | XGBoost | Yes | 28.92 | 5,912.41 | 294 |
+
+The ablation supports regime-aware preprocessing rather than assuming it. FD004
+is the clearest case: XGBoost without regime-aware features lowers RMSE versus
+Ridge but worsens S-score; adding regime-normalized features improves both.
+
+## LSTM Repeated-Run Result
+
+| Model | Subset | Sequence length | Epochs | Seeds | RMSE mean | RMSE std | S-score mean | S-score std |
+| ----- | ------ | --------------: | -----: | ----: | --------: | -------: | -----------: | ----------: |
+| LSTM | FD001 | 30 | 5 | 2 | 16.88 | 1.24 | 577.76 | 228.28 |
+
+Single-seed FD001 runs ranged from RMSE 16.01 / S-score 416.34 to RMSE 17.76 /
+S-score 739.18. The average result is promising, but the variance is too high
+to claim a stable sequence-model advantage.
+
+## Reproduce
+
+```bash
+uv run python scripts/evaluate_subsets.py \
+  --data-dir data/raw \
+  --with-xgboost \
+  --out reports/cross_subset_results.csv
+
+uv run python scripts/evaluate_subsets.py \
+  --data-dir data/raw \
+  --subsets FD002 FD004 \
+  --with-xgboost \
+  --regime-mode both \
+  --out reports/regime_ablation_fd002_fd004.csv
+
+uv run python scripts/evaluate_lstm.py \
+  --data-dir data/raw \
+  --subsets FD001 \
+  --sequence-length 30 \
+  --hidden-size 32 \
+  --epochs 5 \
+  --seeds 42 43 \
+  --out reports/lstm_fd001_5epoch_raw.csv \
+  --summary-out reports/lstm_fd001_5epoch_summary.csv
+```

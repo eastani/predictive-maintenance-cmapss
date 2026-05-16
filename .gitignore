@@ -13,6 +13,7 @@ dist/
 .coverage.*
 htmlcov/
 coverage.xml
+site/
 .tox/
 .nox/
 .cache/

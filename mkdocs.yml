@@ -1,0 +1,33 @@
+site_name: CMAPSS Predictive Maintenance
+site_description: End-to-end predictive maintenance reference pipeline on NASA CMAPSS.
+site_url: https://eastani.github.io/predictive-maintenance-cmapss/
+repo_url: https://github.com/eastani/predictive-maintenance-cmapss
+repo_name: eastani/predictive-maintenance-cmapss
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: teal
+
+nav:
+  - Overview: index.md
+  - Getting Started: getting-started.md
+  - Methodology: methodology.md
+  - Benchmarks: benchmarks.md
+  - Operations: operations.md
+  - Roadmap: roadmap.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true

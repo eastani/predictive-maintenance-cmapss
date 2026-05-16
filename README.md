@@ -28,7 +28,8 @@ notebooks, and production-style Python package structure.
 | Serving | FastAPI inference service, model artifact format, Dockerfile, and API tests |
 | Evidence | Executed notebooks with RMSE, asymmetric S-score, and feature diagnostics |
 | Engineering | Importable `pdm` package, pytest coverage reporting, Ruff, GitHub Actions CI, `uv` lockfile |
-| Next step | Cross-subset FD002/FD004 evaluation, dashboard, and model monitoring |
+| Documentation | MkDocs Material site covering methodology, benchmarks, operations, and roadmap |
+| Next step | Expand repeated-run LSTM evaluation beyond FD001 |
 
 ## Results preview
 
@@ -156,6 +157,16 @@ PDM_MODEL_PATH=artifacts/fd001-ridge.joblib uv run uvicorn pdm.api:app --reload
 
 # 6. Launch the EDA notebook
 uv run jupyter lab notebooks/01_eda.ipynb
+```
+
+## Documentation Site
+
+```bash
+uv sync --extra docs
+uv run mkdocs serve
+
+# Strict build check
+uv run mkdocs build --strict
 ```
 
 ## Cross-Subset Evaluation
@@ -389,8 +400,8 @@ The notebooks are kept paired with `.py` files in the
 - [x] Sequence-window dataset builder with final-cycle test handling
 - [x] LSTM sequence model with proper truncation handling
 - [x] Measured LSTM benchmark table with repeated-run variance
+- [x] Documentation site (MkDocs Material)
 - [ ] Expand LSTM repeated-run benchmark beyond FD001
-- [ ] Documentation site (MkDocs Material)
 
 ## License
 
