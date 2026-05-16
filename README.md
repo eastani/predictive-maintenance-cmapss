@@ -298,6 +298,11 @@ predictions on high-RUL units, not a late-prediction failure near imminent
 failure. That points to underfitting of the healthy long-RUL regime under the
 reduced-window CPU setting.
 
+RUL-band diagnostics narrow this further: the `125+` band drives most of the
+FD002 error, while the model's maximum predictions stay below 119 cycles. That
+suggests a target-design issue because training RUL is clipped at 125 while the
+headline benchmark uses raw test RUL.
+
 ## Dashboard
 
 The benchmark dashboard visualizes RMSE, S-score, and XGBoost-vs-Ridge deltas.

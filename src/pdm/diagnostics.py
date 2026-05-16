@@ -9,6 +9,7 @@ from pdm.models import rmse, s_score
 
 __all__ = [
     "prediction_error_breakdown",
+    "prediction_error_by_rul_band",
     "prediction_rows",
 ]
 
@@ -86,4 +87,36 @@ def prediction_error_breakdown(predictions: pd.DataFrame) -> pd.DataFrame:
         rows.append(_metric_row(early, "early_or_exact"))
     if not late.empty:
         rows.append(_metric_row(late, "late"))
+    return pd.DataFrame(rows)
+
+
+def prediction_error_by_rul_band(
+    predictions: pd.DataFrame,
+    *,
+    bins: tuple[float, ...] = (0.0, 50.0, 100.0, 125.0, float("inf")),
+    labels: tuple[str, ...] = ("0-50", "50-100", "100-125", "125+"),
+) -> pd.DataFrame:
+    """Summarize prediction errors by true-RUL band."""
+    required = {"y_true", "y_pred", "error"}
+    missing = required - set(predictions.columns)
+    if missing:
+        raise KeyError(f"Missing prediction columns: {sorted(missing)}")
+    if predictions.empty:
+        raise ValueError("predictions must not be empty.")
+    if len(labels) != len(bins) - 1:
+        raise ValueError("labels must contain exactly len(bins) - 1 entries.")
+
+    labelled = predictions.copy()
+    labelled["rul_band"] = pd.cut(
+        labelled["y_true"],
+        bins=list(bins),
+        labels=list(labels),
+        include_lowest=True,
+        right=True,
+    )
+    rows = []
+    for band, group in labelled.groupby("rul_band", observed=True, sort=False):
+        row = _metric_row(group, str(band))
+        row["segment"] = f"rul_{band}"
+        rows.append(row)
     return pd.DataFrame(rows)

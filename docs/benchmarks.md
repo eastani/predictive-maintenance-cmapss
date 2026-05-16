@@ -70,6 +70,26 @@ predicts around 69-103 cycles. This suggests underfitting of the healthy
 long-RUL regime under the reduced-window setting, not simply unsafe optimistic
 predictions near failure.
 
+RUL-band diagnostics make the failure mode sharper:
+
+| Seed | RUL band | n | RMSE | S-score | Mean error | Mean abs error | Max abs error |
+| ---: | -------- | -: | ---: | ------: | ---------: | -------------: | ------------: |
+| 42 | 0-50 | 88 | 24.21 | 1,896.77 | 19.86 | 20.24 | 58.64 |
+| 42 | 50-100 | 79 | 19.47 | 707.88 | 7.69 | 16.07 | 49.20 |
+| 42 | 100-125 | 35 | 16.75 | 107.68 | -13.22 | 13.90 | 39.43 |
+| 42 | 125+ | 57 | 60.46 | 16,217.08 | -56.75 | 56.75 | 105.22 |
+| 43 | 0-50 | 88 | 16.70 | 904.94 | 8.38 | 12.04 | 59.93 |
+| 43 | 50-100 | 79 | 23.61 | 1,322.80 | 9.02 | 19.56 | 55.64 |
+| 43 | 100-125 | 35 | 15.96 | 111.71 | -9.81 | 11.92 | 44.16 |
+| 43 | 125+ | 57 | 55.75 | 11,238.56 | -51.48 | 51.48 | 98.36 |
+
+The model's maximum predictions were 113.01 and 118.59 cycles for the two
+seeds, while FD002 test labels reach 194 cycles. That is consistent with a
+target-design issue: training RUL is clipped at 125, but the headline benchmark
+uses raw test RUL. The next experiment should compare raw-label evaluation with
+capped-label evaluation before assuming the architecture itself is the primary
+cause.
+
 ## Reproduce
 
 ```bash
@@ -107,5 +127,6 @@ uv run python scripts/evaluate_lstm.py \
   --out reports/lstm_fd002_3epoch_stride10_raw.csv \
   --summary-out reports/lstm_fd002_3epoch_stride10_summary.csv \
   --predictions-out reports/lstm_fd002_3epoch_stride10_predictions.csv \
-  --diagnostics-out reports/lstm_fd002_3epoch_stride10_diagnostics.csv
+  --diagnostics-out reports/lstm_fd002_3epoch_stride10_diagnostics.csv \
+  --rul-band-diagnostics-out reports/lstm_fd002_3epoch_stride10_rul_band_diagnostics.csv
 ```

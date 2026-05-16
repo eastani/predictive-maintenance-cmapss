@@ -17,6 +17,7 @@
 - FD001 repeated-run LSTM benchmark summary.
 - Preliminary FD002 repeated-run LSTM benchmark.
 - LSTM prediction diagnostics with early-vs-late error breakdowns.
+- RUL-band diagnostics showing FD002 high-RUL compression.
 - MkDocs Material documentation site.
 
 ## Next
@@ -34,8 +35,10 @@ exact configuration, and training-window density. The first FD002 run used
 denser windows and more epochs.
 
 The first diagnostic readout shows the preliminary FD002 LSTM underestimates
-healthy high-RUL units. The next tuning pass should test whether denser windows,
-longer training, or explicit target weighting reduce that compression.
+healthy high-RUL units. The RUL-band view narrows this to the `125+` band, where
+raw test RUL reaches 194 while the model never predicts above roughly 119. The
+next tuning pass should compare raw-label evaluation with capped-label
+evaluation before changing architecture or adding target weighting.
 
 ### Improve Model Diagnostics
 

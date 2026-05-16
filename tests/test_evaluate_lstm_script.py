@@ -7,6 +7,7 @@ from scripts.evaluate_lstm import (
     _regime_options,
     summarize_lstm_results,
     summarize_prediction_diagnostics,
+    summarize_rul_band_diagnostics,
 )
 
 
@@ -101,3 +102,40 @@ class TestSummarizePredictionDiagnostics:
 
         assert diagnostics["segment"].to_list() == ["all", "early_or_exact", "late"]
         assert diagnostics["seed"].to_list() == [1, 1, 1]
+
+
+class TestSummarizeRulBandDiagnostics:
+    def test_aggregates_by_seed_and_rul_band(self) -> None:
+        predictions = pd.DataFrame(
+            [
+                {
+                    "subset": "FD001",
+                    "model": "lstm",
+                    "seed": 1,
+                    "unit_id": 1,
+                    "end_cycle": 10,
+                    "y_true": 25.0,
+                    "y_pred": 30.0,
+                    "error": 5.0,
+                    "abs_error": 5.0,
+                    "late": True,
+                },
+                {
+                    "subset": "FD001",
+                    "model": "lstm",
+                    "seed": 1,
+                    "unit_id": 2,
+                    "end_cycle": 12,
+                    "y_true": 180.0,
+                    "y_pred": 120.0,
+                    "error": -60.0,
+                    "abs_error": 60.0,
+                    "late": False,
+                },
+            ]
+        )
+
+        diagnostics = summarize_rul_band_diagnostics(predictions)
+
+        assert diagnostics["segment"].to_list() == ["rul_0-50", "rul_125+"]
+        assert diagnostics["seed"].to_list() == [1, 1]

@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pdm.diagnostics import prediction_error_breakdown, prediction_rows
+from pdm.diagnostics import (
+    prediction_error_breakdown,
+    prediction_error_by_rul_band,
+    prediction_rows,
+)
 
 
 class TestPredictionRows:
@@ -68,3 +72,36 @@ class TestPredictionErrorBreakdown:
 
         with pytest.raises(ValueError, match="must not be empty"):
             prediction_error_breakdown(rows)
+
+
+class TestPredictionErrorByRulBand:
+    def test_summarizes_true_rul_bands(self) -> None:
+        rows = prediction_rows(
+            subset="FD001",
+            model="lstm",
+            seed=42,
+            unit_ids=np.array([1, 2, 3, 4]),
+            end_cycles=np.array([31, 47, 52, 71]),
+            y_true=np.array([25.0, 75.0, 110.0, 180.0]),
+            y_pred=np.array([30.0, 60.0, 100.0, 120.0]),
+        )
+
+        summary = prediction_error_by_rul_band(rows)
+
+        assert summary["segment"].to_list() == ["rul_0-50", "rul_50-100", "rul_100-125", "rul_125+"]
+        assert summary["n"].to_list() == [1, 1, 1, 1]
+        assert summary.loc[summary["segment"] == "rul_125+", "mean_error"].iloc[0] == -60.0
+
+    def test_rejects_label_count_mismatch(self) -> None:
+        rows = prediction_rows(
+            subset="FD001",
+            model="lstm",
+            seed=42,
+            unit_ids=np.array([1]),
+            end_cycles=np.array([31]),
+            y_true=np.array([25.0]),
+            y_pred=np.array([30.0]),
+        )
+
+        with pytest.raises(ValueError, match="labels"):
+            prediction_error_by_rul_band(rows, bins=(0.0, 50.0), labels=("low", "extra"))
