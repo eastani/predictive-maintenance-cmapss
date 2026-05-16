@@ -162,8 +162,8 @@ uv run jupyter lab notebooks/01_eda.ipynb
 
 FD001 is intentionally simple: one operating condition and one fault mode.
 FD002 and FD004 mix six operating conditions, so the evaluation script enables
-operating-regime clustering and per-regime sensor normalization for those
-subsets before fitting the same model interface.
+standardized operating-regime clustering and per-regime sensor normalization
+for those subsets before fitting the same model interface.
 
 ```bash
 # Ridge baseline across all four subsets

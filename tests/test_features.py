@@ -185,12 +185,31 @@ class TestOperatingRegimePreprocessing:
         out = add_operating_regime(df, model)
 
         assert "op_regime" in out.columns
+        assert model.setting_means.shape == (2,)
+        assert model.setting_stds.shape == (2,)
         assert out["op_regime"].nunique() == 2
         # The low-setting and high-setting blocks should not be assigned to
         # the same operating regime.
         low_regime = out.loc[out["op_setting_1"] < 1.0, "op_regime"].mode().iloc[0]
         high_regime = out.loc[out["op_setting_1"] > 1.0, "op_regime"].mode().iloc[0]
         assert low_regime != high_regime
+
+    def test_operating_regime_clustering_uses_scaled_settings(self) -> None:
+        df = pd.DataFrame(
+            {
+                "op_setting_1": [0.0, 0.0, 1000.0, 1000.0],
+                "op_setting_2": [0.0, 0.01, 0.0, 0.01],
+                "sensor_02": [1.0, 2.0, 3.0, 4.0],
+            }
+        )
+
+        model = fit_operating_regime_model(df, n_regimes=2, random_state=0)
+
+        # Centers are stored in standardized space, so neither dimension
+        # should dominate by raw engineering units.
+        assert np.abs(model.centers).max() < 2.0
+        np.testing.assert_allclose(model.setting_means, np.array([500.0, 0.005]))
+        np.testing.assert_allclose(model.setting_stds, np.array([500.0, 0.005]))
 
     def test_regime_normalizer_adds_z_score_columns(self) -> None:
         df = _build_multi_regime_df()
