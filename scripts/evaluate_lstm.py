@@ -108,14 +108,16 @@ def summarize_lstm_results(results: pd.DataFrame) -> pd.DataFrame:
 def summarize_prediction_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
     """Aggregate prediction diagnostics by subset, model, and seed."""
     rows = []
-    for (subset, model, seed), group in predictions.groupby(
-        ["subset", "model", "seed"],
-        dropna=False,
-    ):
+    group_columns = ["subset", "model", "seed"]
+    if "use_regime_features" in predictions.columns:
+        group_columns.append("use_regime_features")
+    for keys, group in predictions.groupby(group_columns, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_values = dict(zip(group_columns, keys, strict=True))
         breakdown = prediction_error_breakdown(group)
-        breakdown.insert(0, "seed", seed)
-        breakdown.insert(0, "model", model)
-        breakdown.insert(0, "subset", subset)
+        for column in reversed(group_columns):
+            breakdown.insert(0, column, key_values[column])
         rows.append(breakdown)
     return pd.concat(rows, ignore_index=True)
 
@@ -123,14 +125,16 @@ def summarize_prediction_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
 def summarize_rul_band_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
     """Aggregate prediction diagnostics by true-RUL band."""
     rows = []
-    for (subset, model, seed), group in predictions.groupby(
-        ["subset", "model", "seed"],
-        dropna=False,
-    ):
+    group_columns = ["subset", "model", "seed"]
+    if "use_regime_features" in predictions.columns:
+        group_columns.append("use_regime_features")
+    for keys, group in predictions.groupby(group_columns, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_values = dict(zip(group_columns, keys, strict=True))
         breakdown = prediction_error_by_rul_band(group)
-        breakdown.insert(0, "seed", seed)
-        breakdown.insert(0, "model", model)
-        breakdown.insert(0, "subset", subset)
+        for column in reversed(group_columns):
+            breakdown.insert(0, column, key_values[column])
         rows.append(breakdown)
     return pd.concat(rows, ignore_index=True)
 
@@ -142,14 +146,16 @@ def summarize_target_cap_diagnostics(
 ) -> pd.DataFrame:
     """Aggregate raw-vs-capped target diagnostics by subset, model, and seed."""
     rows = []
-    for (subset, model, seed), group in predictions.groupby(
-        ["subset", "model", "seed"],
-        dropna=False,
-    ):
+    group_columns = ["subset", "model", "seed"]
+    if "use_regime_features" in predictions.columns:
+        group_columns.append("use_regime_features")
+    for keys, group in predictions.groupby(group_columns, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_values = dict(zip(group_columns, keys, strict=True))
         breakdown = prediction_error_with_target_caps(group, caps=(None, float(max_rul)))
-        breakdown.insert(0, "seed", seed)
-        breakdown.insert(0, "model", model)
-        breakdown.insert(0, "subset", subset)
+        for column in reversed(group_columns):
+            breakdown.insert(0, column, key_values[column])
         rows.append(breakdown)
     return pd.concat(rows, ignore_index=True)
 
@@ -191,17 +197,17 @@ def main() -> None:
                 row["epochs"] = args.epochs
                 row["seed"] = seed
                 rows.append(row)
-                prediction_frames.append(
-                    prediction_rows(
-                        subset=result.subset,
-                        model=result.model_name,
-                        seed=seed,
-                        unit_ids=details.unit_ids,
-                        end_cycles=details.end_cycles,
-                        y_true=details.y_true,
-                        y_pred=details.y_pred,
-                    )
+                predictions = prediction_rows(
+                    subset=result.subset,
+                    model=result.model_name,
+                    seed=seed,
+                    unit_ids=details.unit_ids,
+                    end_cycles=details.end_cycles,
+                    y_true=details.y_true,
+                    y_pred=details.y_pred,
                 )
+                predictions["use_regime_features"] = result.use_regime_features
+                prediction_frames.append(predictions)
 
     results = (
         pd.DataFrame(rows)

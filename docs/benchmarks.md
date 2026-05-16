@@ -106,6 +106,22 @@ not predicting above the training cap. Under capped labels, the remaining error
 is much closer to the tabular models. A fair next experiment should report both
 raw and capped-label metrics explicitly.
 
+The same raw-vs-capped diagnostic is now available for the tabular benchmark.
+On FD002, the capped convention improves every model, so this is not an
+LSTM-specific excuse. XGBoost remains the strongest measured model under both
+target conventions:
+
+| Model | Run | Raw RMSE | Raw S-score | Cap-125 RMSE | Cap-125 S-score |
+| ----- | --- | -------: | ----------: | -----------: | --------------: |
+| Ridge | deterministic | 29.72 | 15,282.53 | 17.54 | 1,427.70 |
+| XGBoost | deterministic | 28.21 | 11,269.47 | 15.65 | 1,268.18 |
+| LSTM | seed 42 | 34.02 | 18,929.41 | 21.98 | 3,117.45 |
+| LSTM | seed 43 | 31.35 | 13,578.00 | 19.60 | 2,591.30 |
+
+The stricter conclusion is that raw-label FD002 scores partially measure
+target-convention mismatch. Capped-label scoring removes much of the high-RUL
+penalty, but it does not overturn the model ranking in the current experiment.
+
 ## Reproduce
 
 ```bash
@@ -113,6 +129,14 @@ uv run python scripts/evaluate_subsets.py \
   --data-dir data/raw \
   --with-xgboost \
   --out reports/cross_subset_results.csv
+
+uv run python scripts/evaluate_subsets.py \
+  --data-dir data/raw \
+  --subsets FD002 \
+  --with-xgboost \
+  --out reports/fd002_tabular_target_conventions_raw.csv \
+  --predictions-out reports/fd002_tabular_predictions.csv \
+  --target-cap-diagnostics-out reports/fd002_tabular_target_cap_diagnostics.csv
 
 uv run python scripts/evaluate_subsets.py \
   --data-dir data/raw \

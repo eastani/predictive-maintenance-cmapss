@@ -19,6 +19,7 @@
 - LSTM prediction diagnostics with early-vs-late error breakdowns.
 - RUL-band diagnostics showing FD002 high-RUL compression.
 - Raw-vs-capped target diagnostics for LSTM predictions.
+- Raw-vs-capped target diagnostics for tabular Ridge and XGBoost predictions.
 - MkDocs Material documentation site.
 
 ## Next
@@ -37,11 +38,11 @@ denser windows and more epochs.
 
 The first diagnostic readout shows the preliminary FD002 LSTM underestimates
 healthy high-RUL units. The RUL-band view narrows this to the `125+` band, where
-raw test RUL reaches 194 while the model never predicts above roughly 119. The
-next tuning pass should compare raw-label evaluation with capped-label
-evaluation before changing architecture or adding target weighting. Initial
-target-cap diagnostics show the same FD002 predictions improve from RMSE
-34.02/31.35 under raw labels to 21.98/19.60 under capped-125 labels.
+raw test RUL reaches 194 while the model never predicts above roughly 119.
+Target-cap diagnostics show that capped-125 scoring improves all measured FD002
+models, including Ridge and XGBoost. The next tuning pass should therefore
+report raw and capped-label metrics side by side, then improve the LSTM only if
+it closes the gap under both conventions.
 
 ### Improve Model Diagnostics
 

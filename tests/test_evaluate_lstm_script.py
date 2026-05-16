@@ -150,6 +150,7 @@ class TestSummarizeTargetCapDiagnostics:
                     "subset": "FD001",
                     "model": "lstm",
                     "seed": 1,
+                    "use_regime_features": False,
                     "unit_id": 1,
                     "end_cycle": 10,
                     "y_true": 100.0,
@@ -162,6 +163,7 @@ class TestSummarizeTargetCapDiagnostics:
                     "subset": "FD001",
                     "model": "lstm",
                     "seed": 1,
+                    "use_regime_features": False,
                     "unit_id": 2,
                     "end_cycle": 12,
                     "y_true": 180.0,
@@ -170,10 +172,24 @@ class TestSummarizeTargetCapDiagnostics:
                     "abs_error": 60.0,
                     "late": False,
                 },
+                {
+                    "subset": "FD001",
+                    "model": "lstm",
+                    "seed": 1,
+                    "use_regime_features": True,
+                    "unit_id": 1,
+                    "end_cycle": 10,
+                    "y_true": 100.0,
+                    "y_pred": 95.0,
+                    "error": -5.0,
+                    "abs_error": 5.0,
+                    "late": False,
+                },
             ]
         )
 
         diagnostics = summarize_target_cap_diagnostics(predictions, max_rul=125)
 
-        assert diagnostics["target_convention"].to_list() == ["raw", "cap_125"]
-        assert diagnostics["seed"].to_list() == [1, 1]
+        assert diagnostics["target_convention"].to_list() == ["raw", "cap_125", "raw", "cap_125"]
+        assert diagnostics["seed"].to_list() == [1, 1, 1, 1]
+        assert diagnostics["use_regime_features"].to_list() == [False, False, True, True]
