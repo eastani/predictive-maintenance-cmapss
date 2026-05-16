@@ -90,6 +90,22 @@ uses raw test RUL. The next experiment should compare raw-label evaluation with
 capped-label evaluation before assuming the architecture itself is the primary
 cause.
 
+Scoring the same predictions against a capped target confirms the target-design
+effect:
+
+| Seed | Target convention | n | RMSE | S-score | Mean error | Mean abs error | Max abs error |
+| ---: | ----------------- | -: | ---: | ------: | ---------: | -------------: | ------------: |
+| 42 | raw | 259 | 34.02 | 18,929.41 | -5.18 | 26.15 | 105.22 |
+| 42 | cap_125 | 259 | 21.98 | 3,117.45 | 2.31 | 18.65 | 58.64 |
+| 43 | raw | 259 | 31.35 | 13,578.00 | -7.05 | 23.00 | 98.36 |
+| 43 | cap_125 | 259 | 19.60 | 2,591.30 | 0.44 | 15.50 | 59.93 |
+
+This does not make the LSTM better than XGBoost; it changes the interpretation
+of the failure. Under raw labels, the preliminary LSTM is punished heavily for
+not predicting above the training cap. Under capped labels, the remaining error
+is much closer to the tabular models. A fair next experiment should report both
+raw and capped-label metrics explicitly.
+
 ## Reproduce
 
 ```bash
@@ -128,5 +144,6 @@ uv run python scripts/evaluate_lstm.py \
   --summary-out reports/lstm_fd002_3epoch_stride10_summary.csv \
   --predictions-out reports/lstm_fd002_3epoch_stride10_predictions.csv \
   --diagnostics-out reports/lstm_fd002_3epoch_stride10_diagnostics.csv \
-  --rul-band-diagnostics-out reports/lstm_fd002_3epoch_stride10_rul_band_diagnostics.csv
+  --rul-band-diagnostics-out reports/lstm_fd002_3epoch_stride10_rul_band_diagnostics.csv \
+  --target-cap-diagnostics-out reports/lstm_fd002_3epoch_stride10_target_cap_diagnostics.csv
 ```
