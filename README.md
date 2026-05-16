@@ -226,6 +226,29 @@ assuming it. On FD004 especially, XGBoost without regime-aware features lowers
 RMSE slightly versus Ridge but worsens S-score; adding regime-normalized
 features makes the non-linear model useful under both metrics.
 
+## Sequence Modelling
+
+The sequence window builder prepares CMAPSS data for recurrent models without
+changing the benchmark contract: training gets cycle-ending sliding windows,
+while test evaluation gets exactly one final-cycle window per engine.
+
+```python
+from pdm.data import load_subset
+from pdm.sequences import build_sequence_dataset
+
+data = load_subset("FD001", "data/raw")
+seq = build_sequence_dataset(data, sequence_length=30, stride=1)
+
+seq.train_x.shape  # (train windows, 30, n_features)
+seq.test_x.shape   # (test units, 30, n_features)
+seq.test_lengths   # valid timesteps for left-padded short trajectories
+```
+
+This is intentionally separate from the tabular rolling-feature benchmark.
+It prevents a common CMAPSS mistake: scoring every truncated test cycle as if
+it had a label, which inflates the sample count and makes the LSTM comparison
+look more reliable than it is.
+
 ## Dashboard
 
 The benchmark dashboard visualizes RMSE, S-score, and XGBoost-vs-Ridge deltas.
@@ -283,6 +306,7 @@ predictive-maintenance-cmapss/
 |   |-- data.py            # CMAPSS loader + RUL labelling
 |   |-- features.py        # Rolling statistics, regime features, normalization
 |   |-- models.py          # RUL regression models and metrics
+|   |-- sequences.py       # Truncation-safe sequence windows for recurrent models
 |   |-- serving.py         # Model artifact loading and prediction helpers
 |   |-- dashboard.py       # Benchmark dashboard helpers and Dash app
 |   `-- api.py             # FastAPI inference service
@@ -331,6 +355,7 @@ The notebooks are kept paired with `.py` files in the
 - [x] Cross-subset evaluation harness for FD001-FD004
 - [x] Published cross-subset result table showing where XGBoost actually wins
 - [x] Plotly Dash live dashboard
+- [x] Sequence-window dataset builder with final-cycle test handling
 - [ ] LSTM sequence model with proper truncation handling
 - [ ] Documentation site (MkDocs Material)
 
