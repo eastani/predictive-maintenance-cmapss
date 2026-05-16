@@ -10,6 +10,7 @@ from pdm.models import rmse, s_score
 __all__ = [
     "prediction_error_breakdown",
     "prediction_error_by_rul_band",
+    "prediction_error_with_target_caps",
     "prediction_rows",
 ]
 
@@ -119,4 +120,47 @@ def prediction_error_by_rul_band(
         row = _metric_row(group, str(band))
         row["segment"] = f"rul_{band}"
         rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def prediction_error_with_target_caps(
+    predictions: pd.DataFrame,
+    *,
+    caps: tuple[float | None, ...] = (None, 125.0),
+) -> pd.DataFrame:
+    """Compare metrics under raw and capped target conventions.
+
+    ``None`` means raw labels and raw predictions. Numeric caps clip both
+    ``y_true`` and ``y_pred`` to the cap before scoring, matching a capped-RUL
+    evaluation convention.
+    """
+    required = {"y_true", "y_pred"}
+    missing = required - set(predictions.columns)
+    if missing:
+        raise KeyError(f"Missing prediction columns: {sorted(missing)}")
+    if predictions.empty:
+        raise ValueError("predictions must not be empty.")
+
+    rows = []
+    for cap in caps:
+        y_true = predictions["y_true"].to_numpy(dtype=np.float64)
+        y_pred = predictions["y_pred"].to_numpy(dtype=np.float64)
+        if cap is None:
+            label = "raw"
+        else:
+            label = f"cap_{cap:g}"
+            y_true = np.minimum(y_true, cap)
+            y_pred = np.minimum(y_pred, cap)
+        error = y_pred - y_true
+        rows.append(
+            {
+                "target_convention": label,
+                "n": len(predictions),
+                "rmse": rmse(y_true, y_pred),
+                "s_score": s_score(y_true, y_pred),
+                "mean_error": float(error.mean()),
+                "mean_abs_error": float(np.abs(error).mean()),
+                "max_abs_error": float(np.abs(error).max()),
+            }
+        )
     return pd.DataFrame(rows)

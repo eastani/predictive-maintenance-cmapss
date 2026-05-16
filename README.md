@@ -303,6 +303,11 @@ FD002 error, while the model's maximum predictions stay below 119 cycles. That
 suggests a target-design issue because training RUL is clipped at 125 while the
 headline benchmark uses raw test RUL.
 
+When the same FD002 predictions are scored against a capped-125 target, RMSE
+falls from `34.02/31.35` to `21.98/19.60` across the two seeds. This does not
+make the LSTM a winner; it shows the headline raw-label score mixes model error
+with a target-convention mismatch.
+
 ## Dashboard
 
 The benchmark dashboard visualizes RMSE, S-score, and XGBoost-vs-Ridge deltas.

@@ -18,6 +18,7 @@ from pdm.deep import LSTMTrainingConfig, evaluate_lstm_predictions
 from pdm.diagnostics import (
     prediction_error_breakdown,
     prediction_error_by_rul_band,
+    prediction_error_with_target_caps,
     prediction_rows,
 )
 
@@ -39,6 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--predictions-out", type=Path, default=None)
     parser.add_argument("--diagnostics-out", type=Path, default=None)
     parser.add_argument("--rul-band-diagnostics-out", type=Path, default=None)
+    parser.add_argument("--target-cap-diagnostics-out", type=Path, default=None)
     parser.add_argument("--sequence-length", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--max-rul", type=int, default=125)
@@ -133,6 +135,25 @@ def summarize_rul_band_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True)
 
 
+def summarize_target_cap_diagnostics(
+    predictions: pd.DataFrame,
+    *,
+    max_rul: int,
+) -> pd.DataFrame:
+    """Aggregate raw-vs-capped target diagnostics by subset, model, and seed."""
+    rows = []
+    for (subset, model, seed), group in predictions.groupby(
+        ["subset", "model", "seed"],
+        dropna=False,
+    ):
+        breakdown = prediction_error_with_target_caps(group, caps=(None, float(max_rul)))
+        breakdown.insert(0, "seed", seed)
+        breakdown.insert(0, "model", model)
+        breakdown.insert(0, "subset", subset)
+        rows.append(breakdown)
+    return pd.concat(rows, ignore_index=True)
+
+
 def main() -> None:
     """Run the LSTM evaluation and write a CSV report."""
     args = parse_args()
@@ -207,6 +228,12 @@ def main() -> None:
     )
     rul_band_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
     rul_band_diagnostics.to_csv(rul_band_diagnostics_out, index=False)
+    target_cap_diagnostics = summarize_target_cap_diagnostics(predictions, max_rul=args.max_rul)
+    target_cap_diagnostics_out = args.target_cap_diagnostics_out or args.out.with_name(
+        f"{args.out.stem}_target_cap_diagnostics.csv"
+    )
+    target_cap_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
+    target_cap_diagnostics.to_csv(target_cap_diagnostics_out, index=False)
 
     print(results.round({"rmse": 2, "s_score": 2}).to_string(index=False))
     print(f"\nSaved results to {args.out}")
@@ -216,6 +243,7 @@ def main() -> None:
     print(f"Saved predictions to {predictions_out}")
     print(f"Saved diagnostics to {diagnostics_out}")
     print(f"Saved RUL-band diagnostics to {rul_band_diagnostics_out}")
+    print(f"Saved target-cap diagnostics to {target_cap_diagnostics_out}")
 
 
 if __name__ == "__main__":
