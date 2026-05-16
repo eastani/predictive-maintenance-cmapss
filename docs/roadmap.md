@@ -15,18 +15,22 @@
 - Sequence-window dataset builder with final-cycle test handling.
 - Optional PyTorch LSTM baseline with packed sequences.
 - FD001 repeated-run LSTM benchmark summary.
+- Preliminary FD002 repeated-run LSTM benchmark.
 - MkDocs Material documentation site.
 
 ## Next
 
-### Expand LSTM Evaluation
+### Tune And Scale LSTM Evaluation
 
-Run repeated-seed LSTM experiments beyond FD001. FD002 and FD004 are the most
-important next targets because the current XGBoost results suggest that
-non-linear interactions matter most under multiple operating regimes.
+Run larger repeated-seed LSTM experiments beyond the preliminary FD002 result.
+FD002 and FD004 remain the most important targets because the current XGBoost
+results suggest that non-linear interactions matter most under multiple
+operating regimes.
 
 The critical bar is not a single best run. Report mean, standard deviation,
-and exact configuration.
+exact configuration, and training-window density. The first FD002 run used
+`stride=10` to keep CPU time reasonable; a serious comparison should evaluate
+denser windows and more epochs.
 
 ### Improve Model Diagnostics
 
