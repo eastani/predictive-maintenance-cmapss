@@ -16,6 +16,7 @@
 - Optional PyTorch LSTM baseline with packed sequences.
 - FD001 repeated-run LSTM benchmark summary.
 - Preliminary FD002 repeated-run LSTM benchmark.
+- LSTM prediction diagnostics with early-vs-late error breakdowns.
 - MkDocs Material documentation site.
 
 ## Next
@@ -31,6 +32,10 @@ The critical bar is not a single best run. Report mean, standard deviation,
 exact configuration, and training-window density. The first FD002 run used
 `stride=10` to keep CPU time reasonable; a serious comparison should evaluate
 denser windows and more epochs.
+
+The first diagnostic readout shows the preliminary FD002 LSTM underestimates
+healthy high-RUL units. The next tuning pass should test whether denser windows,
+longer training, or explicit target weighting reduce that compression.
 
 ### Improve Model Diagnostics
 

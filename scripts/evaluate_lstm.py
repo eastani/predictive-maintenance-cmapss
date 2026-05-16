@@ -14,7 +14,8 @@ from typing import Literal, cast
 import pandas as pd
 
 from pdm.data import SubsetName, load_subset
-from pdm.deep import LSTMTrainingConfig, evaluate_lstm_regressor
+from pdm.deep import LSTMTrainingConfig, evaluate_lstm_predictions
+from pdm.diagnostics import prediction_error_breakdown, prediction_rows
 
 RegimeMode = Literal["auto", "on", "off", "both"]
 
@@ -31,6 +32,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--out", type=Path, default=Path("reports/lstm_results.csv"))
     parser.add_argument("--summary-out", type=Path, default=None)
+    parser.add_argument("--predictions-out", type=Path, default=None)
+    parser.add_argument("--diagnostics-out", type=Path, default=None)
     parser.add_argument("--sequence-length", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--max-rul", type=int, default=125)
@@ -95,10 +98,26 @@ def summarize_lstm_results(results: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
+def summarize_prediction_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate prediction diagnostics by subset, model, and seed."""
+    rows = []
+    for (subset, model, seed), group in predictions.groupby(
+        ["subset", "model", "seed"],
+        dropna=False,
+    ):
+        breakdown = prediction_error_breakdown(group)
+        breakdown.insert(0, "seed", seed)
+        breakdown.insert(0, "model", model)
+        breakdown.insert(0, "subset", subset)
+        rows.append(breakdown)
+    return pd.concat(rows, ignore_index=True)
+
+
 def main() -> None:
     """Run the LSTM evaluation and write a CSV report."""
     args = parse_args()
     rows = []
+    prediction_frames = []
 
     for subset in args.subsets:
         data = load_subset(cast(SubsetName, subset), args.data_dir)
@@ -115,7 +134,7 @@ def main() -> None:
                     random_state=seed,
                     device=args.device,
                 )
-                result = evaluate_lstm_regressor(
+                details = evaluate_lstm_predictions(
                     data,
                     sequence_length=args.sequence_length,
                     stride=args.stride,
@@ -124,12 +143,24 @@ def main() -> None:
                     n_regimes=args.n_regimes,
                     config=config,
                 )
+                result = details.result
                 row = result.as_dict()
                 row["sequence_length"] = args.sequence_length
                 row["stride"] = args.stride
                 row["epochs"] = args.epochs
                 row["seed"] = seed
                 rows.append(row)
+                prediction_frames.append(
+                    prediction_rows(
+                        subset=result.subset,
+                        model=result.model_name,
+                        seed=seed,
+                        unit_ids=details.unit_ids,
+                        end_cycles=details.end_cycles,
+                        y_true=details.y_true,
+                        y_pred=details.y_pred,
+                    )
+                )
 
     results = (
         pd.DataFrame(rows)
@@ -142,12 +173,22 @@ def main() -> None:
     summary_out = args.summary_out or args.out.with_name(f"{args.out.stem}_summary.csv")
     summary_out.parent.mkdir(parents=True, exist_ok=True)
     summary.to_csv(summary_out, index=False)
+    predictions = pd.concat(prediction_frames, ignore_index=True)
+    predictions_out = args.predictions_out or args.out.with_name(f"{args.out.stem}_predictions.csv")
+    predictions_out.parent.mkdir(parents=True, exist_ok=True)
+    predictions.to_csv(predictions_out, index=False)
+    diagnostics = summarize_prediction_diagnostics(predictions)
+    diagnostics_out = args.diagnostics_out or args.out.with_name(f"{args.out.stem}_diagnostics.csv")
+    diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
+    diagnostics.to_csv(diagnostics_out, index=False)
 
     print(results.round({"rmse": 2, "s_score": 2}).to_string(index=False))
     print(f"\nSaved results to {args.out}")
     print("\nSummary:")
     print(summary.round({"rmse_mean": 2, "rmse_std": 2, "s_score_mean": 2, "s_score_std": 2}))
     print(f"\nSaved summary to {summary_out}")
+    print(f"Saved predictions to {predictions_out}")
+    print(f"Saved diagnostics to {diagnostics_out}")
 
 
 if __name__ == "__main__":

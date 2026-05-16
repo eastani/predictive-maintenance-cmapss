@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import pandas as pd
-from scripts.evaluate_lstm import _regime_options, summarize_lstm_results
+from scripts.evaluate_lstm import (
+    _regime_options,
+    summarize_lstm_results,
+    summarize_prediction_diagnostics,
+)
 
 
 class TestRegimeOptions:
@@ -60,3 +64,40 @@ class TestSummarizeLSTMResults:
         assert summary.loc[0, "rmse_mean"] == 21.0
         assert summary.loc[0, "s_score_mean"] == 120.0
         assert summary.loc[0, "n_train_samples"] == 10
+
+
+class TestSummarizePredictionDiagnostics:
+    def test_aggregates_by_seed(self) -> None:
+        predictions = pd.DataFrame(
+            [
+                {
+                    "subset": "FD001",
+                    "model": "lstm",
+                    "seed": 1,
+                    "unit_id": 1,
+                    "end_cycle": 10,
+                    "y_true": 10.0,
+                    "y_pred": 12.0,
+                    "error": 2.0,
+                    "abs_error": 2.0,
+                    "late": True,
+                },
+                {
+                    "subset": "FD001",
+                    "model": "lstm",
+                    "seed": 1,
+                    "unit_id": 2,
+                    "end_cycle": 12,
+                    "y_true": 20.0,
+                    "y_pred": 18.0,
+                    "error": -2.0,
+                    "abs_error": 2.0,
+                    "late": False,
+                },
+            ]
+        )
+
+        diagnostics = summarize_prediction_diagnostics(predictions)
+
+        assert diagnostics["segment"].to_list() == ["all", "early_or_exact", "late"]
+        assert diagnostics["seed"].to_list() == [1, 1, 1]

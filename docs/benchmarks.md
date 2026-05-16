@@ -50,6 +50,26 @@ to 5,491, compared with 10,854 at `stride=5`. Under that CPU-friendly setting,
 the LSTM is not competitive with regime-aware Ridge or XGBoost. That result is
 important because it prevents an unsupported "deep learning wins" conclusion.
 
+## FD002 LSTM Error Diagnostics
+
+The diagnostic export separates all, early-or-exact, and late predictions. For
+the preliminary FD002 run, the largest failure mode is not excessive late
+prediction. It is severe early prediction on high-RUL units:
+
+| Seed | Segment | n | RMSE | S-score | Mean error | Mean abs error | Max abs error |
+| ---: | ------- | -: | ---: | ------: | ---------: | -------------: | ------------: |
+| 42 | all | 259 | 34.02 | 18,929.41 | -5.18 | 26.15 | 105.22 |
+| 42 | early_or_exact | 121 | 43.05 | 16,387.37 | -33.53 | 33.53 | 105.22 |
+| 42 | late | 138 | 23.39 | 2,542.04 | 19.67 | 19.67 | 58.64 |
+| 43 | all | 259 | 31.35 | 13,578.00 | -7.05 | 23.00 | 98.36 |
+| 43 | early_or_exact | 138 | 37.89 | 11,482.22 | -28.20 | 28.20 | 98.36 |
+| 43 | late | 121 | 21.61 | 2,095.78 | 17.06 | 17.06 | 59.93 |
+
+The worst cases are units with true RUL around 174-194 cycles that the model
+predicts around 69-103 cycles. This suggests underfitting of the healthy
+long-RUL regime under the reduced-window setting, not simply unsafe optimistic
+predictions near failure.
+
 ## Reproduce
 
 ```bash
@@ -85,5 +105,7 @@ uv run python scripts/evaluate_lstm.py \
   --stride 10 \
   --seeds 42 43 \
   --out reports/lstm_fd002_3epoch_stride10_raw.csv \
-  --summary-out reports/lstm_fd002_3epoch_stride10_summary.csv
+  --summary-out reports/lstm_fd002_3epoch_stride10_summary.csv \
+  --predictions-out reports/lstm_fd002_3epoch_stride10_predictions.csv \
+  --diagnostics-out reports/lstm_fd002_3epoch_stride10_diagnostics.csv
 ```
