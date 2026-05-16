@@ -249,6 +249,23 @@ It prevents a common CMAPSS mistake: scoring every truncated test cycle as if
 it had a label, which inflates the sample count and makes the LSTM comparison
 look more reliable than it is.
 
+An optional PyTorch LSTM baseline is available behind the `deep` extra:
+
+```bash
+uv sync --extra deep
+uv run python scripts/evaluate_lstm.py \
+  --data-dir data/raw \
+  --subsets FD001 \
+  --sequence-length 30 \
+  --epochs 20 \
+  --out reports/lstm_results.csv
+```
+
+The LSTM uses packed sequences, so short trajectories are masked rather than
+treated as full-length zero-padded histories. Treat the first run as a baseline,
+not a leaderboard claim; sequence models need repeated runs and tuning before
+their metrics should be compared too aggressively against XGBoost.
+
 ## Dashboard
 
 The benchmark dashboard visualizes RMSE, S-score, and XGBoost-vs-Ridge deltas.
@@ -307,6 +324,7 @@ predictive-maintenance-cmapss/
 |   |-- features.py        # Rolling statistics, regime features, normalization
 |   |-- models.py          # RUL regression models and metrics
 |   |-- sequences.py       # Truncation-safe sequence windows for recurrent models
+|   |-- deep.py            # Optional PyTorch LSTM baseline
 |   |-- serving.py         # Model artifact loading and prediction helpers
 |   |-- dashboard.py       # Benchmark dashboard helpers and Dash app
 |   `-- api.py             # FastAPI inference service
@@ -356,7 +374,8 @@ The notebooks are kept paired with `.py` files in the
 - [x] Published cross-subset result table showing where XGBoost actually wins
 - [x] Plotly Dash live dashboard
 - [x] Sequence-window dataset builder with final-cycle test handling
-- [ ] LSTM sequence model with proper truncation handling
+- [x] LSTM sequence model with proper truncation handling
+- [ ] Measured LSTM benchmark table with repeated-run variance
 - [ ] Documentation site (MkDocs Material)
 
 ## License
