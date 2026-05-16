@@ -257,14 +257,27 @@ uv run python scripts/evaluate_lstm.py \
   --data-dir data/raw \
   --subsets FD001 \
   --sequence-length 30 \
-  --epochs 20 \
+  --hidden-size 32 \
+  --epochs 5 \
+  --seeds 42 43 \
   --out reports/lstm_results.csv
 ```
 
 The LSTM uses packed sequences, so short trajectories are masked rather than
-treated as full-length zero-padded histories. Treat the first run as a baseline,
-not a leaderboard claim; sequence models need repeated runs and tuning before
-their metrics should be compared too aggressively against XGBoost.
+treated as full-length zero-padded histories. It also standardizes valid sensor
+timesteps and the training target before optimization, then reverses the target
+scaling at prediction time.
+
+Measured FD001 repeated-run result:
+
+| Model | Sequence length | Epochs | Seeds | RMSE mean | RMSE std | S-score mean | S-score std |
+| ----- | --------------: | -----: | ----: | --------: | -------: | -----------: | ----------: |
+| LSTM | 30 | 5 | 2 | 16.88 | 1.24 | 577.76 | 228.28 |
+
+Single-seed runs ranged from RMSE 16.01 / S-score 416.34 to RMSE 17.76 /
+S-score 739.18. The mean beats the FD001 Ridge and XGBoost RMSE above, and is
+slightly better than Ridge on S-score, but the variance is too high to claim a
+stable sequence-model win yet.
 
 ## Dashboard
 
@@ -375,7 +388,8 @@ The notebooks are kept paired with `.py` files in the
 - [x] Plotly Dash live dashboard
 - [x] Sequence-window dataset builder with final-cycle test handling
 - [x] LSTM sequence model with proper truncation handling
-- [ ] Measured LSTM benchmark table with repeated-run variance
+- [x] Measured LSTM benchmark table with repeated-run variance
+- [ ] Expand LSTM repeated-run benchmark beyond FD001
 - [ ] Documentation site (MkDocs Material)
 
 ## License
