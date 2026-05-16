@@ -279,16 +279,19 @@ treated as full-length zero-padded histories. It also standardizes valid sensor
 timesteps and the training target before optimization, then reverses the target
 scaling at prediction time.
 
-Measured FD001 repeated-run result:
+Measured repeated-run results:
 
-| Model | Sequence length | Epochs | Seeds | RMSE mean | RMSE std | S-score mean | S-score std |
-| ----- | --------------: | -----: | ----: | --------: | -------: | -----------: | ----------: |
-| LSTM | 30 | 5 | 2 | 16.88 | 1.24 | 577.76 | 228.28 |
+| Subset | Model | Sequence length | Stride | Epochs | Seeds | RMSE mean | RMSE std | S-score mean | S-score std |
+| ------ | ----- | --------------: | -----: | -----: | ----: | --------: | -------: | -----------: | ----------: |
+| FD001 | LSTM | 30 | 1 | 5 | 2 | 16.88 | 1.24 | 577.76 | 228.28 |
+| FD002 | LSTM | 30 | 10 | 3 | 2 | 32.69 | 1.88 | 16,253.71 | 3,784.02 |
 
-Single-seed runs ranged from RMSE 16.01 / S-score 416.34 to RMSE 17.76 /
-S-score 739.18. The mean beats the FD001 Ridge and XGBoost RMSE above, and is
-slightly better than Ridge on S-score, but the variance is too high to claim a
-stable sequence-model win yet.
+The FD001 mean beats the tabular Ridge and XGBoost RMSE above, and is slightly
+better than Ridge on S-score, but the variance is too high to claim a stable
+sequence-model win. On FD002, the small CPU-friendly LSTM run is not yet
+competitive with regime-aware Ridge or XGBoost. This is the useful conclusion:
+sequence models need careful tuning and enough training windows before they are
+worth the added complexity.
 
 ## Dashboard
 
@@ -401,7 +404,8 @@ The notebooks are kept paired with `.py` files in the
 - [x] LSTM sequence model with proper truncation handling
 - [x] Measured LSTM benchmark table with repeated-run variance
 - [x] Documentation site (MkDocs Material)
-- [ ] Expand LSTM repeated-run benchmark beyond FD001
+- [x] Preliminary FD002 LSTM repeated-run benchmark
+- [ ] Tune and scale LSTM benchmarks beyond FD001
 
 ## License
 

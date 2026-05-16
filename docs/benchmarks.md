@@ -34,15 +34,21 @@ The ablation supports regime-aware preprocessing rather than assuming it. FD004
 is the clearest case: XGBoost without regime-aware features lowers RMSE versus
 Ridge but worsens S-score; adding regime-normalized features improves both.
 
-## LSTM Repeated-Run Result
+## LSTM Repeated-Run Results
 
-| Model | Subset | Sequence length | Epochs | Seeds | RMSE mean | RMSE std | S-score mean | S-score std |
-| ----- | ------ | --------------: | -----: | ----: | --------: | -------: | -----------: | ----------: |
-| LSTM | FD001 | 30 | 5 | 2 | 16.88 | 1.24 | 577.76 | 228.28 |
+| Model | Subset | Sequence length | Stride | Epochs | Seeds | RMSE mean | RMSE std | S-score mean | S-score std |
+| ----- | ------ | --------------: | -----: | -----: | ----: | --------: | -------: | -----------: | ----------: |
+| LSTM | FD001 | 30 | 1 | 5 | 2 | 16.88 | 1.24 | 577.76 | 228.28 |
+| LSTM | FD002 | 30 | 10 | 3 | 2 | 32.69 | 1.88 | 16,253.71 | 3,784.02 |
 
 Single-seed FD001 runs ranged from RMSE 16.01 / S-score 416.34 to RMSE 17.76 /
 S-score 739.18. The average result is promising, but the variance is too high
 to claim a stable sequence-model advantage.
+
+The FD002 run is deliberately smaller: `stride=10` reduces the training windows
+to 5,491, compared with 10,854 at `stride=5`. Under that CPU-friendly setting,
+the LSTM is not competitive with regime-aware Ridge or XGBoost. That result is
+important because it prevents an unsupported "deep learning wins" conclusion.
 
 ## Reproduce
 
@@ -68,4 +74,16 @@ uv run python scripts/evaluate_lstm.py \
   --seeds 42 43 \
   --out reports/lstm_fd001_5epoch_raw.csv \
   --summary-out reports/lstm_fd001_5epoch_summary.csv
+
+uv run python scripts/evaluate_lstm.py \
+  --data-dir data/raw \
+  --subsets FD002 \
+  --sequence-length 30 \
+  --hidden-size 32 \
+  --epochs 3 \
+  --batch-size 512 \
+  --stride 10 \
+  --seeds 42 43 \
+  --out reports/lstm_fd002_3epoch_stride10_raw.csv \
+  --summary-out reports/lstm_fd002_3epoch_stride10_summary.csv
 ```
