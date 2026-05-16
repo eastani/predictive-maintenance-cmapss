@@ -7,8 +7,9 @@ so the core package and CI test environment do not need dashboard dependencies.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -147,6 +148,10 @@ def model_delta_summary(results: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _data_table_component(dash_table_module: Any) -> Callable[..., Any]:
+    return cast(Callable[..., Any], dash_table_module.DataTable)
+
+
 def create_dash_app(results_path: str | Path | None = None) -> Any:
     """Create a Plotly Dash dashboard for benchmark inspection."""
     try:
@@ -159,6 +164,7 @@ def create_dash_app(results_path: str | Path | None = None) -> Any:
 
     results = load_benchmark_results(results_path)
     deltas = model_delta_summary(results)
+    data_table = _data_table_component(dash_table)
 
     app = Dash(__name__, title="CMAPSS Benchmark Dashboard")
     app.layout = html.Main(
@@ -210,7 +216,7 @@ def create_dash_app(results_path: str | Path | None = None) -> Any:
             html.Section(
                 [
                     html.H2("Raw Results"),
-                    dash_table.DataTable(
+                    data_table(
                         data=results.round({"rmse": 2, "s_score": 2}).to_dict("records"),
                         columns=[{"name": column, "id": column} for column in results.columns],
                         page_size=8,
