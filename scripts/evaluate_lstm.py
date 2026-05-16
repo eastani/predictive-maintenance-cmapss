@@ -15,7 +15,11 @@ import pandas as pd
 
 from pdm.data import SubsetName, load_subset
 from pdm.deep import LSTMTrainingConfig, evaluate_lstm_predictions
-from pdm.diagnostics import prediction_error_breakdown, prediction_rows
+from pdm.diagnostics import (
+    prediction_error_breakdown,
+    prediction_error_by_rul_band,
+    prediction_rows,
+)
 
 RegimeMode = Literal["auto", "on", "off", "both"]
 
@@ -34,6 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--summary-out", type=Path, default=None)
     parser.add_argument("--predictions-out", type=Path, default=None)
     parser.add_argument("--diagnostics-out", type=Path, default=None)
+    parser.add_argument("--rul-band-diagnostics-out", type=Path, default=None)
     parser.add_argument("--sequence-length", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--max-rul", type=int, default=125)
@@ -113,6 +118,21 @@ def summarize_prediction_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True)
 
 
+def summarize_rul_band_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate prediction diagnostics by true-RUL band."""
+    rows = []
+    for (subset, model, seed), group in predictions.groupby(
+        ["subset", "model", "seed"],
+        dropna=False,
+    ):
+        breakdown = prediction_error_by_rul_band(group)
+        breakdown.insert(0, "seed", seed)
+        breakdown.insert(0, "model", model)
+        breakdown.insert(0, "subset", subset)
+        rows.append(breakdown)
+    return pd.concat(rows, ignore_index=True)
+
+
 def main() -> None:
     """Run the LSTM evaluation and write a CSV report."""
     args = parse_args()
@@ -181,6 +201,12 @@ def main() -> None:
     diagnostics_out = args.diagnostics_out or args.out.with_name(f"{args.out.stem}_diagnostics.csv")
     diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
     diagnostics.to_csv(diagnostics_out, index=False)
+    rul_band_diagnostics = summarize_rul_band_diagnostics(predictions)
+    rul_band_diagnostics_out = args.rul_band_diagnostics_out or args.out.with_name(
+        f"{args.out.stem}_rul_band_diagnostics.csv"
+    )
+    rul_band_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
+    rul_band_diagnostics.to_csv(rul_band_diagnostics_out, index=False)
 
     print(results.round({"rmse": 2, "s_score": 2}).to_string(index=False))
     print(f"\nSaved results to {args.out}")
@@ -189,6 +215,7 @@ def main() -> None:
     print(f"\nSaved summary to {summary_out}")
     print(f"Saved predictions to {predictions_out}")
     print(f"Saved diagnostics to {diagnostics_out}")
+    print(f"Saved RUL-band diagnostics to {rul_band_diagnostics_out}")
 
 
 if __name__ == "__main__":
