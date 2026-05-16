@@ -13,9 +13,11 @@ from pdm.models import rmse, s_score
 from pdm.sequences import build_sequence_dataset
 
 __all__ = [
+    "LSTMEvaluationDetails",
     "LSTMTrainingConfig",
     "TrainedLSTMRegressor",
     "build_lstm_regressor",
+    "evaluate_lstm_predictions",
     "evaluate_lstm_regressor",
     "is_torch_available",
     "left_padded_to_right_padded",
@@ -54,6 +56,19 @@ class TrainedLSTMRegressor:
     target_mean: float
     target_std: float
     padding_value: float
+
+
+@dataclass(frozen=True)
+class LSTMEvaluationDetails:
+    """Detailed LSTM evaluation output for diagnostics."""
+
+    result: EvaluationResult
+    y_true: np.ndarray
+    y_pred: np.ndarray
+    unit_ids: np.ndarray
+    end_cycles: np.ndarray
+    lengths: np.ndarray
+    trained: TrainedLSTMRegressor
 
 
 def is_torch_available() -> bool:
@@ -449,7 +464,7 @@ def predict_lstm_regressor(
     return np.concatenate(predictions).astype(np.float64, copy=False)
 
 
-def evaluate_lstm_regressor(
+def evaluate_lstm_predictions(
     data: CMAPSSData,
     *,
     sequence_length: int = 30,
@@ -458,8 +473,8 @@ def evaluate_lstm_regressor(
     use_regime_features: bool = False,
     n_regimes: int = 6,
     config: LSTMTrainingConfig | None = None,
-) -> EvaluationResult:
-    """Train and evaluate an LSTM baseline using the official test labels."""
+) -> LSTMEvaluationDetails:
+    """Train an LSTM and return predictions plus headline metrics."""
     dataset = build_sequence_dataset(
         data,
         sequence_length=sequence_length,
@@ -480,8 +495,7 @@ def evaluate_lstm_regressor(
         a_min=0.0,
         a_max=None,
     )
-
-    return EvaluationResult(
+    result = EvaluationResult(
         subset=data.subset,
         model_name="lstm",
         rmse=rmse(dataset.test_y, predictions),
@@ -491,3 +505,34 @@ def evaluate_lstm_regressor(
         n_features=dataset.n_features,
         use_regime_features=use_regime_features,
     )
+    return LSTMEvaluationDetails(
+        result=result,
+        y_true=dataset.test_y,
+        y_pred=predictions,
+        unit_ids=dataset.test_unit_ids,
+        end_cycles=dataset.test_end_cycles,
+        lengths=dataset.test_lengths,
+        trained=trained,
+    )
+
+
+def evaluate_lstm_regressor(
+    data: CMAPSSData,
+    *,
+    sequence_length: int = 30,
+    stride: int = 1,
+    max_rul: int = 125,
+    use_regime_features: bool = False,
+    n_regimes: int = 6,
+    config: LSTMTrainingConfig | None = None,
+) -> EvaluationResult:
+    """Train and evaluate an LSTM baseline using the official test labels."""
+    return evaluate_lstm_predictions(
+        data,
+        sequence_length=sequence_length,
+        stride=stride,
+        max_rul=max_rul,
+        use_regime_features=use_regime_features,
+        n_regimes=n_regimes,
+        config=config,
+    ).result

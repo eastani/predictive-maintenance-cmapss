@@ -293,6 +293,11 @@ competitive with regime-aware Ridge or XGBoost. This is the useful conclusion:
 sequence models need careful tuning and enough training windows before they are
 worth the added complexity.
 
+The FD002 diagnostic export shows the largest errors are severe early
+predictions on high-RUL units, not a late-prediction failure near imminent
+failure. That points to underfitting of the healthy long-RUL regime under the
+reduced-window CPU setting.
+
 ## Dashboard
 
 The benchmark dashboard visualizes RMSE, S-score, and XGBoost-vs-Ridge deltas.
