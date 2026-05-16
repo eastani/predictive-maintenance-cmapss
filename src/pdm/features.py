@@ -41,10 +41,12 @@ __all__ = [
 
 @dataclass(frozen=True)
 class OperatingRegimeModel:
-    """K-means operating-regime assignment fitted on operational settings."""
+    """K-means operating-regime assignment fitted on scaled settings."""
 
     setting_columns: tuple[str, ...]
     centers: np.ndarray
+    setting_means: np.ndarray
+    setting_stds: np.ndarray
     regime_column: str = "op_regime"
 
 
@@ -104,11 +106,13 @@ def fit_operating_regime_model(
     random_state: int = 42,
     regime_column: str = "op_regime",
 ) -> OperatingRegimeModel:
-    """Fit a K-means model over operational settings.
+    """Fit a K-means model over standardized operational settings.
 
     FD002 and FD004 contain multiple operating conditions. Assigning each
     row to an operating regime lets downstream feature engineering normalize
     sensors within comparable operating states instead of mixing regimes.
+    The operational settings have very different numeric scales, so K-means
+    is fitted on z-scored settings rather than raw values.
 
     Args:
         df: Input long-format DataFrame.
@@ -140,12 +144,19 @@ def fit_operating_regime_model(
         raise ImportError("scikit-learn is required for operating-regime clustering.") from exc
 
     settings = df[list(setting_columns)].to_numpy(dtype=np.float64, copy=True)
+    setting_means = settings.mean(axis=0)
+    setting_stds = settings.std(axis=0)
+    setting_stds = np.where(setting_stds == 0.0, 1.0, setting_stds)
+    scaled_settings = (settings - setting_means) / setting_stds
+
     model = KMeans(n_clusters=n_regimes, random_state=random_state, n_init="auto")
-    model.fit(settings)
+    model.fit(scaled_settings)
     centers = np.asarray(model.cluster_centers_, dtype=np.float64)
     return OperatingRegimeModel(
         setting_columns=tuple(setting_columns),
         centers=centers,
+        setting_means=setting_means,
+        setting_stds=setting_stds,
         regime_column=regime_column,
     )
 
@@ -157,7 +168,8 @@ def add_operating_regime(df: pd.DataFrame, model: OperatingRegimeModel) -> pd.Da
         raise KeyError(f"Missing operational-setting columns: {missing}")
 
     settings = df[list(model.setting_columns)].to_numpy(dtype=np.float64, copy=True)
-    distances = ((settings[:, None, :] - model.centers[None, :, :]) ** 2).sum(axis=2)
+    scaled_settings = (settings - model.setting_means) / model.setting_stds
+    distances = ((scaled_settings[:, None, :] - model.centers[None, :, :]) ** 2).sum(axis=2)
     labels = np.argmin(distances, axis=1).astype("int64")
 
     out = df.copy()
