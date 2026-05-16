@@ -57,3 +57,26 @@ jobs:
           name: coverage-report
           path: coverage.xml
           if-no-files-found: ignore
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Create virtual environment
+        run: uv venv --python 3.11
+
+      - name: Install documentation dependencies
+        run: uv pip install -e ".[docs]"
+
+      - name: Build documentation
+        run: uv run mkdocs build --strict
