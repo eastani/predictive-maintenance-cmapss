@@ -20,6 +20,7 @@ __all__ = [
     "is_torch_available",
     "left_padded_to_right_padded",
     "predict_lstm_regressor",
+    "standardize_left_padded_sequences",
     "train_lstm_regressor",
 ]
 
@@ -48,6 +49,11 @@ class TrainedLSTMRegressor:
     config: LSTMTrainingConfig
     train_loss: tuple[float, ...]
     device: str
+    feature_means: np.ndarray
+    feature_stds: np.ndarray
+    target_mean: float
+    target_std: float
+    padding_value: float
 
 
 def is_torch_available() -> bool:
@@ -158,6 +164,60 @@ def left_padded_to_right_padded(
     for row_index, length in enumerate(lengths_array):
         out[row_index, :length, :] = x_array[row_index, -length:, :]
     return out
+
+
+def _valid_sequence_rows(x: np.ndarray, lengths: np.ndarray) -> np.ndarray:
+    valid_rows = []
+    for row_index, length in enumerate(lengths):
+        valid_rows.append(x[row_index, -length:, :])
+    return np.concatenate(valid_rows, axis=0)
+
+
+def _fit_sequence_standardization(
+    x: np.ndarray, lengths: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    valid_values = _valid_sequence_rows(x, lengths)
+    means = valid_values.mean(axis=0).astype(np.float32, copy=False)
+    stds = valid_values.std(axis=0).astype(np.float32, copy=False)
+    stds = np.where(stds == 0.0, 1.0, stds).astype(np.float32, copy=False)
+    return means, stds
+
+
+def standardize_left_padded_sequences(
+    x: np.ndarray,
+    lengths: np.ndarray,
+    *,
+    feature_means: np.ndarray | None = None,
+    feature_stds: np.ndarray | None = None,
+    padding_value: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Standardize valid timesteps while preserving padded positions.
+
+    The scaler is fitted only on valid suffix values according to ``lengths``;
+    left-padding cells are left at ``padding_value``. This keeps padding from
+    skewing sensor statistics and gives the LSTM a better-conditioned input
+    space than raw CMAPSS sensor units.
+    """
+    x_array, _, lengths_array = _validate_sequence_arrays(x, None, lengths)
+    if feature_means is None or feature_stds is None:
+        means, stds = _fit_sequence_standardization(x_array, lengths_array)
+    else:
+        means = np.asarray(feature_means, dtype=np.float32)
+        stds = np.asarray(feature_stds, dtype=np.float32)
+        expected_shape = (x_array.shape[2],)
+        if means.shape != expected_shape:
+            raise ValueError(f"feature_means must have shape {expected_shape}, got {means.shape}.")
+        if stds.shape != expected_shape:
+            raise ValueError(f"feature_stds must have shape {expected_shape}, got {stds.shape}.")
+        if np.any(stds <= 0.0):
+            raise ValueError("feature_stds must all be strictly positive.")
+
+    standardized = np.full_like(x_array, fill_value=padding_value, dtype=np.float32)
+    for row_index, length in enumerate(lengths_array):
+        valid = x_array[row_index, -length:, :]
+        standardized[row_index, -length:, :] = (valid - means) / stds
+
+    return standardized, means, stds
 
 
 def _resolve_device(torch: Any, requested: str) -> str:
@@ -274,6 +334,16 @@ def train_lstm_regressor(
     x_array, y_array, lengths_array = _validate_sequence_arrays(train_x, train_y, train_lengths)
     if y_array is None:  # pragma: no cover - impossible through the call signature
         raise ValueError("train_y is required.")
+    x_array, feature_means, feature_stds = standardize_left_padded_sequences(
+        x_array,
+        lengths_array,
+        padding_value=padding_value,
+    )
+    target_mean = float(y_array.mean())
+    target_std = float(y_array.std())
+    if target_std == 0.0:
+        target_std = 1.0
+    y_array = ((y_array - target_mean) / target_std).astype(np.float32, copy=False)
 
     torch, nn, DataLoader, TensorDataset = _load_torch()
     torch.manual_seed(config.random_state)
@@ -331,6 +401,11 @@ def train_lstm_regressor(
         config=config,
         train_loss=tuple(losses),
         device=device,
+        feature_means=feature_means,
+        feature_stds=feature_stds,
+        target_mean=target_mean,
+        target_std=target_std,
+        padding_value=padding_value,
     )
 
 
@@ -345,6 +420,13 @@ def predict_lstm_regressor(
     if batch_size <= 0:
         raise ValueError(f"batch_size must be strictly positive, got {batch_size}.")
     x_array, _, lengths_array = _validate_sequence_arrays(x, None, lengths)
+    x_array, _, _ = standardize_left_padded_sequences(
+        x_array,
+        lengths_array,
+        feature_means=trained.feature_means,
+        feature_stds=trained.feature_stds,
+        padding_value=trained.padding_value,
+    )
     torch, _, DataLoader, TensorDataset = _load_torch()
 
     dataset = TensorDataset(
@@ -360,7 +442,10 @@ def predict_lstm_regressor(
             batch_x = batch_x.to(trained.device)
             batch_lengths = batch_lengths.to(trained.device)
             batch_predictions = trained.model(batch_x, batch_lengths)
-            predictions.append(batch_predictions.detach().cpu().numpy())
+            unscaled_predictions = (
+                batch_predictions.detach().cpu().numpy() * trained.target_std + trained.target_mean
+            )
+            predictions.append(unscaled_predictions)
     return np.concatenate(predictions).astype(np.float64, copy=False)
 
 
