@@ -174,6 +174,14 @@ uv run python scripts/evaluate_subsets.py \
   --data-dir data/raw \
   --with-xgboost \
   --out reports/cross_subset_results.csv
+
+# Regime-aware ablation on the multi-condition subsets
+uv run python scripts/evaluate_subsets.py \
+  --data-dir data/raw \
+  --subsets FD002 FD004 \
+  --with-xgboost \
+  --regime-mode both \
+  --out reports/regime_ablation_fd002_fd004.csv
 ```
 
 The report includes RMSE, CMAPSS S-score, sample counts, feature counts, and
@@ -199,6 +207,24 @@ only improves the asymmetric S-score on FD002 and FD004, where multiple
 operating regimes make non-linear interactions more valuable. On FD001 and
 FD003, the extra model capacity makes more costly late predictions even when
 RMSE moves slightly lower.
+
+Regime-feature ablation on the multi-condition subsets:
+
+| Subset | Model | Regime-aware | RMSE | S-score | Features |
+| ------ | ----- | ------------ | ---: | ------: | -------: |
+| FD002 | Ridge | No | 30.64 | 17,835.85 | 147 |
+| FD002 | XGBoost | No | 30.05 | 12,840.71 | 147 |
+| FD002 | Ridge | Yes | 29.72 | 15,282.53 | 294 |
+| FD002 | XGBoost | Yes | 28.21 | 11,269.47 | 294 |
+| FD004 | Ridge | No | 31.71 | 7,861.98 | 147 |
+| FD004 | XGBoost | No | 31.49 | 8,825.88 | 147 |
+| FD004 | Ridge | Yes | 30.68 | 6,946.85 | 294 |
+| FD004 | XGBoost | Yes | 28.92 | 5,912.41 | 294 |
+
+The ablation supports the regime-aware preprocessing choice rather than merely
+assuming it. On FD004 especially, XGBoost without regime-aware features lowers
+RMSE slightly versus Ridge but worsens S-score; adding regime-normalized
+features makes the non-linear model useful under both metrics.
 
 ## Serving API
 
