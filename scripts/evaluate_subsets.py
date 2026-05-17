@@ -10,9 +10,15 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import json
+import platform
+import subprocess
+import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import pandas as pd
 
@@ -44,6 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--target-cap-diagnostics-out", type=Path, default=None)
     parser.add_argument("--regime-diagnostics-out", type=Path, default=None)
     parser.add_argument("--s-score-diagnostics-out", type=Path, default=None)
+    parser.add_argument("--metadata-out", type=Path, default=None)
     parser.add_argument("--with-xgboost", action="store_true")
     parser.add_argument("--max-rul", type=int, default=125)
     parser.add_argument("--n-regimes", type=int, default=6)
@@ -75,6 +82,123 @@ def _model_specs(include_xgboost: bool) -> list[tuple[str, Callable[[], Regresso
             )
         )
     return specs
+
+
+def _metadata_output_path(results_out: Path, metadata_out: Path | None) -> Path:
+    """Resolve the benchmark metadata output path."""
+    return metadata_out or results_out.with_name(f"{results_out.stem}_metadata.json")
+
+
+def _dependency_version(package_name: str) -> str | None:
+    """Return an installed dependency version when it is importable by metadata."""
+    try:
+        return version(package_name)
+    except PackageNotFoundError:
+        return None
+
+
+def _git_commit(repo_root: Path | None = None) -> str | None:
+    """Return the current git commit hash, or None outside a git checkout."""
+    root = repo_root or Path(__file__).resolve().parents[1]
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    commit = completed.stdout.strip()
+    if completed.returncode != 0 or not commit:
+        return None
+    return commit
+
+
+def _json_ready(value: Any) -> Any:
+    """Convert argparse values into JSON-serializable metadata."""
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, tuple):
+        return [_json_ready(item) for item in value]
+    if isinstance(value, list):
+        return [_json_ready(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _json_ready(item) for key, item in value.items()}
+    return value
+
+
+def _model_metadata(include_xgboost: bool) -> list[dict[str, Any]]:
+    """Describe the configured benchmark models without fitting them."""
+    models: list[dict[str, Any]] = [
+        {
+            "name": "ridge",
+            "estimator": "sklearn.linear_model.Ridge",
+            "parameters": {"alpha": 1.0},
+        }
+    ]
+    if include_xgboost:
+        models.append(
+            {
+                "name": "xgboost",
+                "estimator": "xgboost.XGBRegressor",
+                "parameters": {
+                    "n_estimators": 500,
+                    "max_depth": 3,
+                    "learning_rate": 0.03,
+                },
+            }
+        )
+    return models
+
+
+def build_run_metadata(
+    args: argparse.Namespace,
+    *,
+    command: list[str],
+    output_files: dict[str, Path],
+    started_at: str,
+    finished_at: str,
+    n_result_rows: int,
+    n_prediction_rows: int,
+    git_commit: str | None,
+) -> dict[str, Any]:
+    """Build reproducibility metadata for a cross-subset benchmark run."""
+    return {
+        "schema_version": 1,
+        "script": "scripts/evaluate_subsets.py",
+        "command": command,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "git": {"commit": git_commit},
+        "inputs": {
+            "data_dir": str(args.data_dir),
+            "subsets": list(args.subsets),
+        },
+        "configuration": {
+            key: _json_ready(value)
+            for key, value in vars(args).items()
+            if key not in {"out", "metadata_out"}
+        },
+        "target_convention": {
+            "training_max_rul": args.max_rul,
+            "headline_metrics": "raw_test_rul",
+            "diagnostics": "raw_and_capped_test_rul",
+        },
+        "models": _model_metadata(args.with_xgboost),
+        "environment": {
+            "python": platform.python_version(),
+            "pandas": pd.__version__,
+            "scikit_learn": _dependency_version("scikit-learn"),
+            "xgboost": _dependency_version("xgboost") if args.with_xgboost else None,
+        },
+        "outputs": {name: str(path) for name, path in output_files.items()},
+        "counts": {
+            "result_rows": n_result_rows,
+            "prediction_rows": n_prediction_rows,
+        },
+    }
 
 
 def _regime_options(subset: str, mode: RegimeMode) -> list[bool]:
@@ -154,6 +278,7 @@ def summarize_s_score_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
 def main() -> None:
     """Run the cross-subset evaluation and write a CSV report."""
     args = parse_args()
+    started_at = datetime.now(UTC).replace(microsecond=0).isoformat()
     rows = []
     prediction_frames = []
 
@@ -216,6 +341,29 @@ def main() -> None:
         )
         regime_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
         regime_diagnostics.to_csv(regime_diagnostics_out, index=False)
+    output_files = {
+        "results": args.out,
+        "predictions": predictions_out,
+        "target_cap_diagnostics": target_cap_diagnostics_out,
+        "s_score_diagnostics": s_score_diagnostics_out,
+    }
+    if regime_diagnostics is not None:
+        output_files["regime_diagnostics"] = regime_diagnostics_out
+    metadata_out = _metadata_output_path(args.out, args.metadata_out)
+    output_files["metadata"] = metadata_out
+    metadata_out.parent.mkdir(parents=True, exist_ok=True)
+    finished_at = datetime.now(UTC).replace(microsecond=0).isoformat()
+    metadata = build_run_metadata(
+        args,
+        command=sys.argv,
+        output_files=output_files,
+        started_at=started_at,
+        finished_at=finished_at,
+        n_result_rows=len(results),
+        n_prediction_rows=len(predictions),
+        git_commit=_git_commit(),
+    )
+    metadata_out.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(results.round({"rmse": 2, "s_score": 2}).to_string(index=False))
     print(f"\nSaved results to {args.out}")
     print(f"Saved predictions to {predictions_out}")
@@ -223,6 +371,7 @@ def main() -> None:
     print(f"Saved S-score diagnostics to {s_score_diagnostics_out}")
     if regime_diagnostics is not None:
         print(f"Saved operating-regime diagnostics to {regime_diagnostics_out}")
+    print(f"Saved run metadata to {metadata_out}")
 
 
 if __name__ == "__main__":
