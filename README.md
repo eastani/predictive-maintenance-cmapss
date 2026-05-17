@@ -78,6 +78,23 @@ The top XGBoost features line up with the high-pressure-compressor sensor
 signals surfaced during exploratory analysis, giving the model results a
 domain-level sanity check.
 
+### Benchmark diagnostic charts
+
+![Raw vs capped target convention RMSE](docs/assets/diagnostic_target_conventions.svg)
+
+Raw and capped-125 scoring are reported side by side because high-RUL labels
+above the training cap can change how model errors should be interpreted.
+
+![S-score contribution by error direction](docs/assets/diagnostic_s_score_contributions.svg)
+
+The asymmetric S-score is split by error direction so maintenance risk is not
+reduced to a single headline metric.
+
+![Operating-regime RMSE ranges](docs/assets/diagnostic_regime_rmse_ranges.svg)
+
+The regime range view shows how much aggregate scores can hide segment-level
+variation under multiple operating conditions.
+
 ## Why this project
 
 Industrial predictive maintenance combines three problems that are usually

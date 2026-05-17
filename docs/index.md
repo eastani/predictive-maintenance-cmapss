@@ -49,6 +49,11 @@ headline-only model win.
 The most important XGBoost features align with the degradation signals surfaced
 by EDA, which gives the model results a basic domain sanity check.
 
+![S-score contribution by error direction](assets/diagnostic_s_score_contributions.svg)
+
+The benchmark diagnostics split asymmetric S-score into early and late
+prediction cost, making the operational risk direction visible.
+
 ## Reading Path
 
 Start with [Getting Started](getting-started.md) to reproduce the environment.

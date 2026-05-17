@@ -22,6 +22,7 @@
 - Raw-vs-capped target diagnostics for tabular Ridge and XGBoost predictions.
 - Per-regime residual diagnostics for FD002 and FD004 tabular predictions.
 - Early-vs-late S-score contribution diagnostics for tabular and LSTM predictions.
+- Static diagnostic charts for target conventions, S-score direction, and regime RMSE ranges.
 - MkDocs Material documentation site.
 
 ## Next
