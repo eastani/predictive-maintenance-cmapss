@@ -31,6 +31,25 @@ notebooks, and production-style Python package structure.
 | Documentation | MkDocs Material site covering methodology, benchmarks, operations, and roadmap |
 | Next step | Expand repeated-run LSTM evaluation beyond FD001 |
 
+## Key findings
+
+- **Model capacity helps conditionally, not universally.** XGBoost improves RMSE
+  across FD001-FD004, but it worsens asymmetric S-score on FD001/FD003. The
+  stronger model is most useful on FD002/FD004, where multiple operating
+  regimes make non-linear interactions matter more.
+- **Regime-aware preprocessing is evidence-backed.** On FD002/FD004,
+  operating-regime clustering plus per-regime normalization improves the
+  multi-condition benchmarks, and per-regime diagnostics show the remaining
+  errors are not uniform across operating states.
+- **Target convention changes the interpretation.** Raw FD002/FD004 labels
+  include high-RUL values above the 125-cycle training cap. Reporting raw and
+  capped-125 metrics side by side prevents overreading high-RUL compression as
+  only an architecture failure.
+- **Failure direction matters operationally.** S-score contribution diagnostics
+  show FD002 is dominated by early, over-conservative predictions, while FD004
+  has a larger late-prediction share. Lower RMSE alone is not enough for a
+  maintenance policy.
+
 ## Results preview
 
 The figures below are exported from the executed notebooks in this repository.
