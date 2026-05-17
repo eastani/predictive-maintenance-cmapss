@@ -23,29 +23,26 @@
 - Per-regime residual diagnostics for FD002 and FD004 tabular predictions.
 - Early-vs-late S-score contribution diagnostics for tabular and LSTM predictions.
 - Static diagnostic charts for target conventions, S-score direction, and regime RMSE ranges.
+- Experiment plan and operational-risk framing for future benchmark claims.
 - MkDocs Material documentation site.
 
 ## Next
 
 ### Tune And Scale LSTM Evaluation
 
-Run larger repeated-seed LSTM experiments beyond the preliminary FD002 result.
-FD002 and FD004 remain the most important targets because the current XGBoost
-results suggest that non-linear interactions matter most under multiple
-operating regimes.
+Run the controlled LSTM experiments described in the
+[Experiment Plan](experiment-plan.md). FD002 and FD004 remain the most important
+targets because the current XGBoost results suggest that non-linear
+interactions matter most under multiple operating regimes.
 
 The critical bar is not a single best run. Report mean, standard deviation,
 exact configuration, and training-window density. The first FD002 run used
 `stride=10` to keep CPU time reasonable; a serious comparison should evaluate
 denser windows and more epochs.
 
-The first diagnostic readout shows the preliminary FD002 LSTM underestimates
-healthy high-RUL units. The RUL-band view narrows this to the `125+` band, where
-raw test RUL reaches 194 while the model never predicts above roughly 119.
-Target-cap diagnostics show that capped-125 scoring improves all measured FD002
-models, including Ridge and XGBoost. The next tuning pass should therefore
-report raw and capped-label metrics side by side, then improve the LSTM only if
-it closes the gap under both conventions.
+The next tuning pass should therefore report raw and capped-label metrics side
+by side, then improve the LSTM only if it closes the gap under both
+conventions.
 
 ### Improve Model Diagnostics
 

@@ -58,5 +58,7 @@ prediction cost, making the operational risk direction visible.
 
 Start with [Getting Started](getting-started.md) to reproduce the environment.
 Then read [Methodology](methodology.md) before interpreting the numbers in
-[Benchmarks](benchmarks.md). The [Operations](operations.md) page describes the
-serving API and dashboard boundary.
+[Benchmarks](benchmarks.md). The [Experiment Plan](experiment-plan.md) explains
+which claims are still hypotheses and what evidence would be needed next. The
+[Operations](operations.md) page describes the serving API and dashboard
+boundary.
