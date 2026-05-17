@@ -7,6 +7,7 @@ import pytest
 
 from pdm.diagnostics import (
     prediction_error_breakdown,
+    prediction_error_by_group,
     prediction_error_by_rul_band,
     prediction_error_with_target_caps,
     prediction_rows,
@@ -106,6 +107,44 @@ class TestPredictionErrorByRulBand:
 
         with pytest.raises(ValueError, match="labels"):
             prediction_error_by_rul_band(rows, bins=(0.0, 50.0), labels=("low", "extra"))
+
+
+class TestPredictionErrorByGroup:
+    def test_summarizes_categorical_groups(self) -> None:
+        rows = prediction_rows(
+            subset="FD002",
+            model="xgboost",
+            seed=None,
+            unit_ids=np.array([1, 2, 3]),
+            end_cycles=np.array([31, 47, 52]),
+            y_true=np.array([10.0, 20.0, 30.0]),
+            y_pred=np.array([12.0, 15.0, 27.0]),
+        )
+        rows["operating_regime"] = np.array([0, 1, 1])
+
+        summary = prediction_error_by_group(
+            rows,
+            group_column="operating_regime",
+            segment_prefix="op_regime",
+        )
+
+        assert summary["segment"].to_list() == ["op_regime_0", "op_regime_1"]
+        assert summary["n"].to_list() == [1, 2]
+        assert summary.loc[summary["segment"] == "op_regime_1", "mean_error"].iloc[0] == -4.0
+
+    def test_rejects_missing_group_column(self) -> None:
+        rows = prediction_rows(
+            subset="FD002",
+            model="xgboost",
+            seed=None,
+            unit_ids=np.array([1]),
+            end_cycles=np.array([31]),
+            y_true=np.array([10.0]),
+            y_pred=np.array([12.0]),
+        )
+
+        with pytest.raises(KeyError, match="operating_regime"):
+            prediction_error_by_group(rows, group_column="operating_regime")
 
 
 class TestPredictionErrorWithTargetCaps:

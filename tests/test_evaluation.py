@@ -7,7 +7,11 @@ import pandas as pd
 from sklearn.dummy import DummyRegressor
 
 from pdm.data import CMAPSSData
-from pdm.evaluation import build_modelling_dataset, evaluate_regressor
+from pdm.evaluation import (
+    build_modelling_dataset,
+    evaluate_regressor,
+    evaluate_regressor_predictions,
+)
 
 
 def _synthetic_data() -> CMAPSSData:
@@ -96,3 +100,32 @@ class TestEvaluateRegressor:
         assert np.isfinite(result.rmse)
         assert np.isfinite(result.s_score)
         assert result.as_dict()["model"] == "dummy-mean"
+
+    def test_can_return_test_unit_predictions(self) -> None:
+        details = evaluate_regressor_predictions(
+            _synthetic_data(),
+            model_name="dummy-mean",
+            model_factory=lambda: DummyRegressor(strategy="mean"),
+            windows=(2,),
+        )
+
+        assert details.result.subset == "FD002"
+        assert details.unit_ids.tolist() == [1, 2, 3, 4]
+        assert details.end_cycles.tolist() == [3, 3, 3, 3]
+        assert details.y_true.tolist() == [3, 3, 3, 3]
+        assert details.y_pred.shape == details.y_true.shape
+        assert np.all(details.y_pred >= 0.0)
+        assert details.operating_regimes is None
+
+    def test_returns_operating_regime_metadata_when_enabled(self) -> None:
+        details = evaluate_regressor_predictions(
+            _synthetic_data(),
+            model_name="dummy-mean",
+            model_factory=lambda: DummyRegressor(strategy="mean"),
+            windows=(2,),
+            use_regime_features=True,
+            n_regimes=2,
+        )
+
+        assert details.operating_regimes is not None
+        assert details.operating_regimes.shape == details.y_true.shape

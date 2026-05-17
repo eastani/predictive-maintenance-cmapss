@@ -196,9 +196,11 @@ uv run python scripts/evaluate_subsets.py \
 ```
 
 The report includes RMSE, CMAPSS S-score, sample counts, feature counts, and
-whether regime-aware features were enabled. This is the benchmark harness for
-showing where model capacity matters, instead of claiming that XGBoost wins
-everywhere.
+whether regime-aware features were enabled. It also exports per-unit
+predictions, raw-vs-capped target diagnostics, and operating-regime residual
+diagnostics so target conventions and segment-level failures can be checked
+explicitly. This is the benchmark harness for showing where model capacity
+matters, instead of claiming that XGBoost wins everywhere.
 
 Latest measured results:
 
@@ -307,6 +309,18 @@ When the same FD002 predictions are scored against a capped-125 target, RMSE
 falls from `34.02/31.35` to `21.98/19.60` across the two seeds. This does not
 make the LSTM a winner; it shows the headline raw-label score mixes model error
 with a target-convention mismatch.
+
+The same diagnostic on FD002 Ridge and XGBoost shows that capped scoring
+improves the tabular models too: Ridge moves from RMSE `29.72` to `17.54`, and
+XGBoost moves from `28.21` to `15.65`. That keeps the conclusion conservative:
+target convention matters, but the current evidence still favors the
+regime-aware tabular models on FD002.
+
+FD004 is a useful caution: XGBoost keeps the better raw RMSE/S-score and capped
+RMSE, but Ridge has the slightly better capped S-score. Regime-level diagnostics
+also show that XGBoost is not uniformly better across every learned operating
+regime, so model choice should stay tied to the target convention and the cost
+of late predictions.
 
 ## Dashboard
 

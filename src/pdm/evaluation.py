@@ -70,6 +70,18 @@ class EvaluationResult:
         }
 
 
+@dataclass(frozen=True)
+class RegressorPredictionDetails:
+    """Headline result plus one prediction per labelled test unit."""
+
+    result: EvaluationResult
+    unit_ids: np.ndarray
+    end_cycles: np.ndarray
+    y_true: np.ndarray
+    y_pred: np.ndarray
+    operating_regimes: np.ndarray | None = None
+
+
 def _last_test_cycle(test: pd.DataFrame, test_rul: pd.DataFrame) -> pd.DataFrame:
     last_cycle_index = test.groupby("unit_id")["cycle"].transform("max") == test["cycle"]
     final = test[last_cycle_index].sort_values("unit_id").reset_index(drop=True).copy()
@@ -126,7 +138,7 @@ def build_modelling_dataset(
     )
 
 
-def evaluate_regressor(
+def evaluate_regressor_predictions(
     data: CMAPSSData,
     *,
     model_name: str,
@@ -135,8 +147,8 @@ def evaluate_regressor(
     max_rul: int = 125,
     use_regime_features: bool = False,
     n_regimes: int = 6,
-) -> EvaluationResult:
-    """Fit and evaluate one model on a CMAPSS subset."""
+) -> RegressorPredictionDetails:
+    """Fit one model and return both headline metrics and test-unit predictions."""
     modelling = build_modelling_dataset(
         data,
         windows=windows,
@@ -151,7 +163,7 @@ def evaluate_regressor(
     model.fit(x_train, y_train)
     predictions = np.clip(model.predict(x_test), a_min=0.0, a_max=None)
 
-    return EvaluationResult(
+    result = EvaluationResult(
         subset=data.subset,
         model_name=model_name,
         rmse=rmse(y_test, predictions),
@@ -161,3 +173,38 @@ def evaluate_regressor(
         n_features=x_train.shape[1],
         use_regime_features=use_regime_features,
     )
+    return RegressorPredictionDetails(
+        result=result,
+        unit_ids=modelling.test_final["unit_id"].to_numpy(dtype=np.int64),
+        end_cycles=modelling.test_final["cycle"].to_numpy(dtype=np.int64),
+        y_true=y_test,
+        y_pred=predictions,
+        operating_regimes=(
+            modelling.test_final["op_regime"].to_numpy(dtype=np.int64)
+            if "op_regime" in modelling.test_final.columns
+            else None
+        ),
+    )
+
+
+def evaluate_regressor(
+    data: CMAPSSData,
+    *,
+    model_name: str,
+    model_factory: Callable[[], Regressor],
+    windows: Iterable[int] = (5, 10, 20),
+    max_rul: int = 125,
+    use_regime_features: bool = False,
+    n_regimes: int = 6,
+) -> EvaluationResult:
+    """Fit and evaluate one model on a CMAPSS subset."""
+    details = evaluate_regressor_predictions(
+        data,
+        model_name=model_name,
+        model_factory=model_factory,
+        windows=windows,
+        max_rul=max_rul,
+        use_regime_features=use_regime_features,
+        n_regimes=n_regimes,
+    )
+    return details.result

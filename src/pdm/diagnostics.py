@@ -9,6 +9,7 @@ from pdm.models import rmse, s_score
 
 __all__ = [
     "prediction_error_breakdown",
+    "prediction_error_by_group",
     "prediction_error_by_rul_band",
     "prediction_error_with_target_caps",
     "prediction_rows",
@@ -119,6 +120,30 @@ def prediction_error_by_rul_band(
     for band, group in labelled.groupby("rul_band", observed=True, sort=False):
         row = _metric_row(group, str(band))
         row["segment"] = f"rul_{band}"
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def prediction_error_by_group(
+    predictions: pd.DataFrame,
+    *,
+    group_column: str,
+    segment_prefix: str | None = None,
+) -> pd.DataFrame:
+    """Summarize prediction errors by a categorical prediction column."""
+    required = {"y_true", "y_pred", "error", group_column}
+    missing = required - set(predictions.columns)
+    if missing:
+        raise KeyError(f"Missing prediction columns: {sorted(missing)}")
+    labelled = predictions.dropna(subset=[group_column])
+    if labelled.empty:
+        raise ValueError(f"predictions must contain at least one non-null {group_column} value.")
+
+    rows = []
+    prefix = segment_prefix or group_column
+    for group_value, group in labelled.groupby(group_column, observed=True, sort=True):
+        row = _metric_row(group, str(group_value))
+        row["segment"] = f"{prefix}_{group_value}"
         rows.append(row)
     return pd.DataFrame(rows)
 
