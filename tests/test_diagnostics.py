@@ -11,6 +11,7 @@ from pdm.diagnostics import (
     prediction_error_by_rul_band,
     prediction_error_with_target_caps,
     prediction_rows,
+    prediction_s_score_contributions,
 )
 
 
@@ -178,3 +179,40 @@ class TestPredictionErrorWithTargetCaps:
 
         with pytest.raises(ValueError, match="must not be empty"):
             prediction_error_with_target_caps(rows)
+
+
+class TestPredictionSScoreContributions:
+    def test_breaks_down_early_and_late_contributions(self) -> None:
+        rows = prediction_rows(
+            subset="FD001",
+            model="ridge",
+            seed=None,
+            unit_ids=np.array([1, 2, 3]),
+            end_cycles=np.array([31, 47, 52]),
+            y_true=np.array([10.0, 20.0, 30.0]),
+            y_pred=np.array([5.0, 30.0, 30.0]),
+        )
+
+        summary = prediction_s_score_contributions(rows)
+
+        assert summary["segment"].to_list() == ["all", "early", "late"]
+        assert summary["n"].to_list() == [3, 1, 2]
+        assert summary.loc[summary["segment"] == "all", "s_score"].iloc[0] == pytest.approx(
+            summary.loc[summary["segment"] == "early", "s_score"].iloc[0]
+            + summary.loc[summary["segment"] == "late", "s_score"].iloc[0]
+        )
+        assert summary.loc[summary["segment"] == "late", "s_score_share"].iloc[0] > 0.5
+
+    def test_rejects_empty_predictions(self) -> None:
+        rows = prediction_rows(
+            subset="FD001",
+            model="ridge",
+            seed=None,
+            unit_ids=np.array([1]),
+            end_cycles=np.array([31]),
+            y_true=np.array([10.0]),
+            y_pred=np.array([10.0]),
+        ).iloc[0:0]
+
+        with pytest.raises(ValueError, match="must not be empty"):
+            prediction_s_score_contributions(rows)

@@ -322,6 +322,11 @@ also show that XGBoost is not uniformly better across every learned operating
 regime, so model choice should stay tied to the target convention and the cost
 of late predictions.
 
+The S-score contribution split adds a second caution. FD002's raw S-score is
+dominated by early predictions, but FD004 has a larger late-prediction share,
+especially for XGBoost. That means a lower headline RMSE is not enough; the
+failure direction still has to match the maintenance policy.
+
 ## Dashboard
 
 The benchmark dashboard visualizes RMSE, S-score, and XGBoost-vs-Ridge deltas.

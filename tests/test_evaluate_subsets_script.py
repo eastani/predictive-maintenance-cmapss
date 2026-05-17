@@ -6,6 +6,7 @@ import pandas as pd
 from scripts.evaluate_subsets import (
     _regime_options,
     summarize_operating_regime_diagnostics,
+    summarize_s_score_diagnostics,
     summarize_target_cap_diagnostics,
 )
 
@@ -117,4 +118,44 @@ class TestSummarizeOperatingRegimeDiagnostics:
 
         assert diagnostics["segment"].to_list() == ["op_regime_0", "op_regime_1"]
         assert diagnostics["use_regime_features"].to_list() == [True, True]
+        assert diagnostics["seed"].isna().all()
+
+
+class TestSummarizeSScoreDiagnostics:
+    def test_aggregates_s_score_contributions_without_seed(self) -> None:
+        predictions = pd.DataFrame(
+            [
+                {
+                    "subset": "FD002",
+                    "model": "ridge",
+                    "seed": None,
+                    "use_regime_features": True,
+                    "unit_id": 1,
+                    "end_cycle": 10,
+                    "y_true": 100.0,
+                    "y_pred": 90.0,
+                    "error": -10.0,
+                    "abs_error": 10.0,
+                    "late": False,
+                },
+                {
+                    "subset": "FD002",
+                    "model": "ridge",
+                    "seed": None,
+                    "use_regime_features": True,
+                    "unit_id": 2,
+                    "end_cycle": 12,
+                    "y_true": 100.0,
+                    "y_pred": 110.0,
+                    "error": 10.0,
+                    "abs_error": 10.0,
+                    "late": True,
+                },
+            ]
+        )
+
+        diagnostics = summarize_s_score_diagnostics(predictions)
+
+        assert diagnostics["segment"].to_list() == ["all", "early", "late"]
+        assert diagnostics["use_regime_features"].to_list() == [True, True, True]
         assert diagnostics["seed"].isna().all()

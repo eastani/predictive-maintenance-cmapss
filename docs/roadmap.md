@@ -21,6 +21,7 @@
 - Raw-vs-capped target diagnostics for LSTM predictions.
 - Raw-vs-capped target diagnostics for tabular Ridge and XGBoost predictions.
 - Per-regime residual diagnostics for FD002 and FD004 tabular predictions.
+- Early-vs-late S-score contribution diagnostics for tabular and LSTM predictions.
 - MkDocs Material documentation site.
 
 ## Next
@@ -50,7 +51,6 @@ it closes the gap under both conventions.
 Useful additions:
 
 - Prediction-error histograms by subset.
-- Late-vs-early error breakdown for S-score.
 - Learning curves for LSTM sequence length, hidden size, and epoch count.
 
 ### Deployment Maturity

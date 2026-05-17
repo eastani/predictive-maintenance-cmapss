@@ -147,6 +147,23 @@ predictions.
 | FD004 | Ridge | 23.86 | 34.65 | 473.58 | 2,415.15 |
 | FD004 | XGBoost | 23.64 | 31.30 | 528.73 | 1,747.91 |
 
+The S-score contribution split is another guardrail against overclaiming. On
+FD002, more than 90% of the raw S-score comes from early predictions, so the
+dominant error is over-conservative high-RUL underprediction rather than
+near-failure optimism. FD004 has a larger late-prediction contribution,
+especially for XGBoost:
+
+| Subset | Model | Early S-score share | Late S-score share | Early n | Late n |
+| ------ | ----- | ------------------: | -----------------: | ------: | -----: |
+| FD002 | Ridge | 93.44% | 6.56% | 136 | 123 |
+| FD002 | XGBoost | 91.45% | 8.55% | 153 | 106 |
+| FD004 | Ridge | 76.19% | 23.81% | 128 | 120 |
+| FD004 | XGBoost | 69.00% | 31.00% | 130 | 118 |
+
+That distinction matters operationally: a model dominated by early S-score
+costs can waste maintenance capacity, while a model with higher late
+contribution needs closer safety review even if its headline RMSE is better.
+
 ## Reproduce
 
 ```bash
@@ -162,6 +179,7 @@ uv run python scripts/evaluate_subsets.py \
   --out reports/fd002_tabular_target_conventions_raw.csv \
   --predictions-out reports/fd002_tabular_predictions.csv \
   --target-cap-diagnostics-out reports/fd002_tabular_target_cap_diagnostics.csv \
+  --s-score-diagnostics-out reports/fd002_tabular_s_score_diagnostics.csv \
   --regime-diagnostics-out reports/fd002_tabular_regime_diagnostics.csv
 
 uv run python scripts/evaluate_subsets.py \
@@ -171,6 +189,7 @@ uv run python scripts/evaluate_subsets.py \
   --out reports/fd004_tabular_target_conventions_raw.csv \
   --predictions-out reports/fd004_tabular_predictions.csv \
   --target-cap-diagnostics-out reports/fd004_tabular_target_cap_diagnostics.csv \
+  --s-score-diagnostics-out reports/fd004_tabular_s_score_diagnostics.csv \
   --regime-diagnostics-out reports/fd004_tabular_regime_diagnostics.csv
 
 uv run python scripts/evaluate_subsets.py \
