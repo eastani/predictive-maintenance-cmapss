@@ -111,6 +111,8 @@ On FD002, the capped convention improves every model, so this is not an
 LSTM-specific excuse. XGBoost remains the strongest measured model under both
 target conventions:
 
+![Raw vs capped target convention RMSE](assets/diagnostic_target_conventions.svg)
+
 | Model | Run | Raw RMSE | Raw S-score | Cap-125 RMSE | Cap-125 S-score |
 | ----- | --- | -------: | ----------: | -----------: | --------------: |
 | Ridge | deterministic | 29.72 | 15,282.53 | 17.54 | 1,427.70 |
@@ -140,6 +142,8 @@ and 1 remain the hardest. XGBoost is not uniformly better in every regime, so
 model choice should stay tied to both the target convention and the cost of late
 predictions.
 
+![Operating-regime RMSE ranges](assets/diagnostic_regime_rmse_ranges.svg)
+
 | Subset | Model | Best regime RMSE | Worst regime RMSE | Best regime S-score | Worst regime S-score |
 | ------ | ----- | ---------------: | ----------------: | ------------------: | -------------------: |
 | FD002 | Ridge | 26.71 | 32.76 | 1,372.17 | 4,473.85 |
@@ -152,6 +156,8 @@ FD002, more than 90% of the raw S-score comes from early predictions, so the
 dominant error is over-conservative high-RUL underprediction rather than
 near-failure optimism. FD004 has a larger late-prediction contribution,
 especially for XGBoost:
+
+![S-score contribution by error direction](assets/diagnostic_s_score_contributions.svg)
 
 | Subset | Model | Early S-score share | Late S-score share | Early n | Late n |
 | ------ | ----- | ------------------: | -----------------: | ------: | -----: |
