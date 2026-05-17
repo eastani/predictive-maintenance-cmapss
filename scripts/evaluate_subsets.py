@@ -21,6 +21,7 @@ from pdm.diagnostics import (
     prediction_error_by_group,
     prediction_error_with_target_caps,
     prediction_rows,
+    prediction_s_score_contributions,
 )
 from pdm.evaluation import Regressor, evaluate_regressor_predictions
 from pdm.models import build_baseline_regressor, build_gradient_boosted_regressor
@@ -42,6 +43,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--predictions-out", type=Path, default=None)
     parser.add_argument("--target-cap-diagnostics-out", type=Path, default=None)
     parser.add_argument("--regime-diagnostics-out", type=Path, default=None)
+    parser.add_argument("--s-score-diagnostics-out", type=Path, default=None)
     parser.add_argument("--with-xgboost", action="store_true")
     parser.add_argument("--max-rul", type=int, default=125)
     parser.add_argument("--n-regimes", type=int, default=6)
@@ -132,6 +134,23 @@ def summarize_operating_regime_diagnostics(predictions: pd.DataFrame) -> pd.Data
     return pd.concat(rows, ignore_index=True)
 
 
+def summarize_s_score_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate early-vs-late S-score contributions by subset and model."""
+    rows = []
+    group_columns = ["subset", "model", "seed"]
+    if "use_regime_features" in predictions.columns:
+        group_columns.append("use_regime_features")
+    for keys, group in predictions.groupby(group_columns, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_values = dict(zip(group_columns, keys, strict=True))
+        breakdown = prediction_s_score_contributions(group)
+        for column in reversed(group_columns):
+            breakdown.insert(0, column, key_values[column])
+        rows.append(breakdown)
+    return pd.concat(rows, ignore_index=True)
+
+
 def main() -> None:
     """Run the cross-subset evaluation and write a CSV report."""
     args = parse_args()
@@ -183,6 +202,12 @@ def main() -> None:
     )
     target_cap_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
     target_cap_diagnostics.to_csv(target_cap_diagnostics_out, index=False)
+    s_score_diagnostics = summarize_s_score_diagnostics(predictions)
+    s_score_diagnostics_out = args.s_score_diagnostics_out or args.out.with_name(
+        f"{args.out.stem}_s_score_diagnostics.csv"
+    )
+    s_score_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
+    s_score_diagnostics.to_csv(s_score_diagnostics_out, index=False)
     regime_diagnostics = None
     if "operating_regime" in predictions.columns and predictions["operating_regime"].notna().any():
         regime_diagnostics = summarize_operating_regime_diagnostics(predictions)
@@ -195,6 +220,7 @@ def main() -> None:
     print(f"\nSaved results to {args.out}")
     print(f"Saved predictions to {predictions_out}")
     print(f"Saved target-cap diagnostics to {target_cap_diagnostics_out}")
+    print(f"Saved S-score diagnostics to {s_score_diagnostics_out}")
     if regime_diagnostics is not None:
         print(f"Saved operating-regime diagnostics to {regime_diagnostics_out}")
 

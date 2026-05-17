@@ -20,6 +20,7 @@ from pdm.diagnostics import (
     prediction_error_by_rul_band,
     prediction_error_with_target_caps,
     prediction_rows,
+    prediction_s_score_contributions,
 )
 
 RegimeMode = Literal["auto", "on", "off", "both"]
@@ -41,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--diagnostics-out", type=Path, default=None)
     parser.add_argument("--rul-band-diagnostics-out", type=Path, default=None)
     parser.add_argument("--target-cap-diagnostics-out", type=Path, default=None)
+    parser.add_argument("--s-score-diagnostics-out", type=Path, default=None)
     parser.add_argument("--sequence-length", type=int, default=30)
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--max-rul", type=int, default=125)
@@ -160,6 +162,23 @@ def summarize_target_cap_diagnostics(
     return pd.concat(rows, ignore_index=True)
 
 
+def summarize_s_score_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate early-vs-late S-score contributions by subset, model, and seed."""
+    rows = []
+    group_columns = ["subset", "model", "seed"]
+    if "use_regime_features" in predictions.columns:
+        group_columns.append("use_regime_features")
+    for keys, group in predictions.groupby(group_columns, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_values = dict(zip(group_columns, keys, strict=True))
+        breakdown = prediction_s_score_contributions(group)
+        for column in reversed(group_columns):
+            breakdown.insert(0, column, key_values[column])
+        rows.append(breakdown)
+    return pd.concat(rows, ignore_index=True)
+
+
 def main() -> None:
     """Run the LSTM evaluation and write a CSV report."""
     args = parse_args()
@@ -240,6 +259,12 @@ def main() -> None:
     )
     target_cap_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
     target_cap_diagnostics.to_csv(target_cap_diagnostics_out, index=False)
+    s_score_diagnostics = summarize_s_score_diagnostics(predictions)
+    s_score_diagnostics_out = args.s_score_diagnostics_out or args.out.with_name(
+        f"{args.out.stem}_s_score_diagnostics.csv"
+    )
+    s_score_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
+    s_score_diagnostics.to_csv(s_score_diagnostics_out, index=False)
 
     print(results.round({"rmse": 2, "s_score": 2}).to_string(index=False))
     print(f"\nSaved results to {args.out}")
@@ -250,6 +275,7 @@ def main() -> None:
     print(f"Saved diagnostics to {diagnostics_out}")
     print(f"Saved RUL-band diagnostics to {rul_band_diagnostics_out}")
     print(f"Saved target-cap diagnostics to {target_cap_diagnostics_out}")
+    print(f"Saved S-score diagnostics to {s_score_diagnostics_out}")
 
 
 if __name__ == "__main__":

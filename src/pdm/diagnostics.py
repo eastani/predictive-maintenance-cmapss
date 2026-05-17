@@ -13,6 +13,7 @@ __all__ = [
     "prediction_error_by_rul_band",
     "prediction_error_with_target_caps",
     "prediction_rows",
+    "prediction_s_score_contributions",
 ]
 
 
@@ -186,6 +187,62 @@ def prediction_error_with_target_caps(
                 "mean_error": float(error.mean()),
                 "mean_abs_error": float(np.abs(error).mean()),
                 "max_abs_error": float(np.abs(error).max()),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def prediction_s_score_contributions(
+    predictions: pd.DataFrame,
+    *,
+    early_decay: float = 13.0,
+    late_decay: float = 10.0,
+) -> pd.DataFrame:
+    """Break the asymmetric S-score into early and late prediction contributions."""
+    required = {"y_true", "y_pred"}
+    missing = required - set(predictions.columns)
+    if missing:
+        raise KeyError(f"Missing prediction columns: {sorted(missing)}")
+    if predictions.empty:
+        raise ValueError("predictions must not be empty.")
+    if early_decay <= 0 or late_decay <= 0:
+        raise ValueError("decay constants must be strictly positive.")
+
+    y_true = predictions["y_true"].to_numpy(dtype=np.float64)
+    y_pred = predictions["y_pred"].to_numpy(dtype=np.float64)
+    diff = y_pred - y_true
+    early_scores = np.exp(-diff[diff < 0.0] / early_decay) - 1.0
+    late_scores = np.exp(diff[diff >= 0.0] / late_decay) - 1.0
+    total = float(early_scores.sum() + late_scores.sum())
+
+    rows = [
+        {
+            "segment": "all",
+            "n": len(predictions),
+            "s_score": total,
+            "s_score_share": 1.0 if total > 0.0 else 0.0,
+            "mean_s_score": total / len(predictions),
+            "max_s_score": float(
+                max(
+                    early_scores.max(initial=0.0),
+                    late_scores.max(initial=0.0),
+                )
+            ),
+        }
+    ]
+    for label, scores, n in (
+        ("early", early_scores, int((diff < 0.0).sum())),
+        ("late", late_scores, int((diff >= 0.0).sum())),
+    ):
+        segment_score = float(scores.sum())
+        rows.append(
+            {
+                "segment": label,
+                "n": n,
+                "s_score": segment_score,
+                "s_score_share": segment_score / total if total > 0.0 else 0.0,
+                "mean_s_score": segment_score / n if n > 0 else 0.0,
+                "max_s_score": float(scores.max(initial=0.0)),
             }
         )
     return pd.DataFrame(rows)

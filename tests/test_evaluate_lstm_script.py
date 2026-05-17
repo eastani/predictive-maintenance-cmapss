@@ -8,6 +8,7 @@ from scripts.evaluate_lstm import (
     summarize_lstm_results,
     summarize_prediction_diagnostics,
     summarize_rul_band_diagnostics,
+    summarize_s_score_diagnostics,
     summarize_target_cap_diagnostics,
 )
 
@@ -193,3 +194,43 @@ class TestSummarizeTargetCapDiagnostics:
         assert diagnostics["target_convention"].to_list() == ["raw", "cap_125", "raw", "cap_125"]
         assert diagnostics["seed"].to_list() == [1, 1, 1, 1]
         assert diagnostics["use_regime_features"].to_list() == [False, False, True, True]
+
+
+class TestSummarizeSScoreDiagnostics:
+    def test_aggregates_by_seed_and_error_direction(self) -> None:
+        predictions = pd.DataFrame(
+            [
+                {
+                    "subset": "FD001",
+                    "model": "lstm",
+                    "seed": 1,
+                    "use_regime_features": False,
+                    "unit_id": 1,
+                    "end_cycle": 10,
+                    "y_true": 100.0,
+                    "y_pred": 90.0,
+                    "error": -10.0,
+                    "abs_error": 10.0,
+                    "late": False,
+                },
+                {
+                    "subset": "FD001",
+                    "model": "lstm",
+                    "seed": 1,
+                    "use_regime_features": False,
+                    "unit_id": 2,
+                    "end_cycle": 12,
+                    "y_true": 100.0,
+                    "y_pred": 110.0,
+                    "error": 10.0,
+                    "abs_error": 10.0,
+                    "late": True,
+                },
+            ]
+        )
+
+        diagnostics = summarize_s_score_diagnostics(predictions)
+
+        assert diagnostics["segment"].to_list() == ["all", "early", "late"]
+        assert diagnostics["seed"].to_list() == [1, 1, 1]
+        assert diagnostics["use_regime_features"].to_list() == [False, False, False]
