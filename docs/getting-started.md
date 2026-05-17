@@ -55,6 +55,11 @@ uv run python scripts/evaluate_lstm.py \
   --out reports/lstm_results.csv
 ```
 
+The tabular benchmark writes a reproducibility metadata file next to the main
+CSV, such as `reports/cross_subset_results_metadata.json`. It captures the
+command arguments, git commit, dependency versions, model settings, and output
+paths for the run.
+
 ## Build The Docs
 
 ```bash

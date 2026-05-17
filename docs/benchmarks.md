@@ -231,3 +231,9 @@ uv run python scripts/evaluate_lstm.py \
   --rul-band-diagnostics-out reports/lstm_fd002_3epoch_stride10_rul_band_diagnostics.csv \
   --target-cap-diagnostics-out reports/lstm_fd002_3epoch_stride10_target_cap_diagnostics.csv
 ```
+
+The tabular benchmark also writes run metadata next to the main CSV by default,
+for example `reports/cross_subset_results_metadata.json`. This file records the
+CLI arguments, git commit, package versions, model settings, output files, and
+row counts used for the run. Use `--metadata-out` when you need to pin the
+metadata file to a different path.
