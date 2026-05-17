@@ -10,6 +10,15 @@ modelling tradeoffs inspectable: when extra model capacity helps, when it
 hurts the asymmetric S-score, and how preprocessing choices affect the
 multi-condition subsets.
 
+## Key Findings
+
+| Finding | Evidence |
+| ------- | -------- |
+| Model capacity is conditional | XGBoost improves RMSE across all subsets but worsens S-score on FD001 and FD003. |
+| Multi-condition subsets need regime handling | FD002 and FD004 improve with operating-regime features, but residuals still vary by regime. |
+| Target convention affects conclusions | FD002 and FD004 scores shift substantially when raw test labels are capped at 125 cycles. |
+| Error direction matters | FD002 S-score is mostly early-prediction cost; FD004 has a larger late-prediction share. |
+
 ## What Is Included
 
 | Area | Implementation |
