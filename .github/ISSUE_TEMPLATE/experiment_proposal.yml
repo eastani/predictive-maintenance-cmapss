@@ -1,0 +1,62 @@
+name: Experiment proposal
+description: Propose a benchmark, diagnostic, or model experiment.
+title: "[experiment]: "
+labels: ["experiment"]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: What specific failure mode or improvement are you testing?
+      placeholder: "Example: Denser FD002 LSTM windows reduce high-RUL compression without increasing late S-score share."
+    validations:
+      required: true
+  - type: dropdown
+    id: subset
+    attributes:
+      label: Subset
+      options:
+        - FD001
+        - FD002
+        - FD003
+        - FD004
+        - multiple subsets
+        - not subset-specific
+    validations:
+      required: true
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Baseline comparison
+      description: Which existing model/configuration is the comparison point?
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Metrics and decision rule
+      description: Include RMSE, S-score, raw/capped convention, and any diagnostic segments that matter.
+      placeholder: |
+        Success requires:
+        - lower raw and capped-125 RMSE
+        - no increase in late S-score share
+        - repeated-seed mean improves, not only best seed
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Proposed commands
+      description: Include the exact commands you plan to run, if known.
+      render: shell
+  - type: checkboxes
+    id: claim_discipline
+    attributes:
+      label: Claim discipline
+      options:
+        - label: This proposal avoids best-seed-only reporting.
+          required: true
+        - label: This proposal states how raw and capped-125 scoring will be handled.
+          required: true
+        - label: This proposal states what result would reject the change.
+          required: true

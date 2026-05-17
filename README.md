@@ -205,6 +205,14 @@ uv run mkdocs serve
 uv run mkdocs build --strict
 ```
 
+## Contributing
+
+Contributions are welcome, especially focused documentation, diagnostics, and
+reproducibility improvements. Start with [CONTRIBUTING.md](CONTRIBUTING.md)
+before opening an issue or pull request. Experiment proposals should state the
+hypothesis, baseline, metrics, and rejection criteria before adding new model
+complexity.
+
 ## Cross-Subset Evaluation
 
 FD001 is intentionally simple: one operating condition and one fault mode.

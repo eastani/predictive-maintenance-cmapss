@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Experiment plan
+    url: https://github.com/eastani/predictive-maintenance-cmapss/blob/main/docs/experiment-plan.md
+    about: Read this before proposing a benchmark or model experiment.
+  - name: Contribution guide
+    url: https://github.com/eastani/predictive-maintenance-cmapss/blob/main/CONTRIBUTING.md
+    about: Local setup, validation, and pull request expectations.
