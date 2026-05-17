@@ -28,7 +28,7 @@ notebooks, and production-style Python package structure.
 | Serving | FastAPI inference service, model artifact format, Dockerfile, and API tests |
 | Evidence | Executed notebooks with RMSE, asymmetric S-score, and feature diagnostics |
 | Engineering | Importable `pdm` package, pytest coverage reporting, Ruff, GitHub Actions CI, `uv` lockfile |
-| Documentation | MkDocs Material site covering methodology, benchmarks, operations, and roadmap |
+| Documentation | MkDocs Material site covering methodology, benchmarks, experiment planning, operations, and roadmap |
 | Next step | Expand repeated-run LSTM evaluation beyond FD001 |
 
 ## Key findings
