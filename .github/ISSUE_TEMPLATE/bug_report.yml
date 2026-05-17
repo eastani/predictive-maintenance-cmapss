@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible problem in the package, scripts, docs, or CI.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What failed, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Include exact commands, paths, and any relevant subset names.
+      placeholder: |
+        uv run ...
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Error output
+      description: Paste the smallest useful error output or traceback.
+      render: shell
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - data loading
+        - feature engineering
+        - tabular evaluation
+        - LSTM evaluation
+        - diagnostics
+        - API / serving
+        - dashboard
+        - documentation
+        - CI / tooling
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and pull requests.
+          required: true
+        - label: I included a command or minimal reproduction.
+          required: true

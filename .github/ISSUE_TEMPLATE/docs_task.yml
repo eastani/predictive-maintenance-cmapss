@@ -1,0 +1,43 @@
+name: Documentation task
+description: Improve explanations, examples, diagrams, or reading flow.
+title: "[docs]: "
+labels: ["documentation"]
+body:
+  - type: textarea
+    id: page
+    attributes:
+      label: Page or section
+      description: Which README or docs page should change?
+    validations:
+      required: true
+  - type: textarea
+    id: audience
+    attributes:
+      label: Intended reader
+      description: Who is the explanation for?
+      placeholder: "Example: first-time contributor, ML engineer, hiring reviewer, operations engineer"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Current problem
+      description: What is confusing, missing, or too hard to verify?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_change
+    attributes:
+      label: Proposed change
+      description: What should be added, removed, or clarified?
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The change will not introduce unsupported benchmark claims.
+          required: true
+        - label: The change can be validated with `uv run mkdocs build --strict`.
+          required: true
