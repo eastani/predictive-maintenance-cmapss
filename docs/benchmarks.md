@@ -122,6 +122,31 @@ The stricter conclusion is that raw-label FD002 scores partially measure
 target-convention mismatch. Capped-label scoring removes much of the high-RUL
 penalty, but it does not overturn the model ranking in the current experiment.
 
+FD004 adds an important counterexample. XGBoost is still better on raw RMSE and
+raw S-score, and it has better capped RMSE, but Ridge has the slightly better
+capped S-score:
+
+| Subset | Model | Raw RMSE | Raw S-score | Cap-125 RMSE | Cap-125 S-score |
+| ------ | ----- | -------: | ----------: | -----------: | --------------: |
+| FD002 | Ridge | 29.72 | 15,282.53 | 17.54 | 1,427.70 |
+| FD002 | XGBoost | 28.21 | 11,269.47 | 15.65 | 1,268.18 |
+| FD004 | Ridge | 30.68 | 6,946.85 | 19.79 | 2,085.20 |
+| FD004 | XGBoost | 28.92 | 5,912.41 | 17.90 | 2,219.97 |
+
+Operating-regime diagnostics make the same point at a finer level. On FD002,
+XGBoost improves most regimes but still leaves RMSE above 30 in regimes 1 and
+3. On FD004, regime 3 is the easiest segment for both models, while regimes 0
+and 1 remain the hardest. XGBoost is not uniformly better in every regime, so
+model choice should stay tied to both the target convention and the cost of late
+predictions.
+
+| Subset | Model | Best regime RMSE | Worst regime RMSE | Best regime S-score | Worst regime S-score |
+| ------ | ----- | ---------------: | ----------------: | ------------------: | -------------------: |
+| FD002 | Ridge | 26.71 | 32.76 | 1,372.17 | 4,473.85 |
+| FD002 | XGBoost | 24.26 | 31.34 | 914.70 | 3,554.65 |
+| FD004 | Ridge | 23.86 | 34.65 | 473.58 | 2,415.15 |
+| FD004 | XGBoost | 23.64 | 31.30 | 528.73 | 1,747.91 |
+
 ## Reproduce
 
 ```bash
@@ -136,7 +161,17 @@ uv run python scripts/evaluate_subsets.py \
   --with-xgboost \
   --out reports/fd002_tabular_target_conventions_raw.csv \
   --predictions-out reports/fd002_tabular_predictions.csv \
-  --target-cap-diagnostics-out reports/fd002_tabular_target_cap_diagnostics.csv
+  --target-cap-diagnostics-out reports/fd002_tabular_target_cap_diagnostics.csv \
+  --regime-diagnostics-out reports/fd002_tabular_regime_diagnostics.csv
+
+uv run python scripts/evaluate_subsets.py \
+  --data-dir data/raw \
+  --subsets FD004 \
+  --with-xgboost \
+  --out reports/fd004_tabular_target_conventions_raw.csv \
+  --predictions-out reports/fd004_tabular_predictions.csv \
+  --target-cap-diagnostics-out reports/fd004_tabular_target_cap_diagnostics.csv \
+  --regime-diagnostics-out reports/fd004_tabular_regime_diagnostics.csv
 
 uv run python scripts/evaluate_subsets.py \
   --data-dir data/raw \

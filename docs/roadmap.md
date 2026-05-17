@@ -20,6 +20,7 @@
 - RUL-band diagnostics showing FD002 high-RUL compression.
 - Raw-vs-capped target diagnostics for LSTM predictions.
 - Raw-vs-capped target diagnostics for tabular Ridge and XGBoost predictions.
+- Per-regime residual diagnostics for FD002 and FD004 tabular predictions.
 - MkDocs Material documentation site.
 
 ## Next
@@ -50,7 +51,6 @@ Useful additions:
 
 - Prediction-error histograms by subset.
 - Late-vs-early error breakdown for S-score.
-- Per-regime residual analysis on FD002 and FD004.
 - Learning curves for LSTM sequence length, hidden size, and epoch count.
 
 ### Deployment Maturity

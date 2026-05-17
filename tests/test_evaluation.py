@@ -115,3 +115,17 @@ class TestEvaluateRegressor:
         assert details.y_true.tolist() == [3, 3, 3, 3]
         assert details.y_pred.shape == details.y_true.shape
         assert np.all(details.y_pred >= 0.0)
+        assert details.operating_regimes is None
+
+    def test_returns_operating_regime_metadata_when_enabled(self) -> None:
+        details = evaluate_regressor_predictions(
+            _synthetic_data(),
+            model_name="dummy-mean",
+            model_factory=lambda: DummyRegressor(strategy="mean"),
+            windows=(2,),
+            use_regime_features=True,
+            n_regimes=2,
+        )
+
+        assert details.operating_regimes is not None
+        assert details.operating_regimes.shape == details.y_true.shape

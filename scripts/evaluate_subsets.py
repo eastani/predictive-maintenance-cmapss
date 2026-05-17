@@ -17,7 +17,11 @@ from typing import Literal, cast
 import pandas as pd
 
 from pdm.data import SubsetName, load_subset
-from pdm.diagnostics import prediction_error_with_target_caps, prediction_rows
+from pdm.diagnostics import (
+    prediction_error_by_group,
+    prediction_error_with_target_caps,
+    prediction_rows,
+)
 from pdm.evaluation import Regressor, evaluate_regressor_predictions
 from pdm.models import build_baseline_regressor, build_gradient_boosted_regressor
 
@@ -37,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out", type=Path, default=Path("reports/cross_subset_results.csv"))
     parser.add_argument("--predictions-out", type=Path, default=None)
     parser.add_argument("--target-cap-diagnostics-out", type=Path, default=None)
+    parser.add_argument("--regime-diagnostics-out", type=Path, default=None)
     parser.add_argument("--with-xgboost", action="store_true")
     parser.add_argument("--max-rul", type=int, default=125)
     parser.add_argument("--n-regimes", type=int, default=6)
@@ -101,6 +106,32 @@ def summarize_target_cap_diagnostics(
     return pd.concat(rows, ignore_index=True)
 
 
+def summarize_operating_regime_diagnostics(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate prediction diagnostics by learned operating regime."""
+    if "operating_regime" not in predictions.columns:
+        raise KeyError("Missing prediction columns: ['operating_regime']")
+    rows = []
+    group_columns = ["subset", "model", "seed", "use_regime_features"]
+    for keys, group in predictions.dropna(subset=["operating_regime"]).groupby(
+        group_columns,
+        dropna=False,
+    ):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_values = dict(zip(group_columns, keys, strict=True))
+        breakdown = prediction_error_by_group(
+            group,
+            group_column="operating_regime",
+            segment_prefix="op_regime",
+        )
+        for column in reversed(group_columns):
+            breakdown.insert(0, column, key_values[column])
+        rows.append(breakdown)
+    if not rows:
+        raise ValueError("predictions must contain at least one non-null operating_regime value.")
+    return pd.concat(rows, ignore_index=True)
+
+
 def main() -> None:
     """Run the cross-subset evaluation and write a CSV report."""
     args = parse_args()
@@ -131,6 +162,8 @@ def main() -> None:
                     y_pred=details.y_pred,
                 )
                 predictions["use_regime_features"] = result.use_regime_features
+                if details.operating_regimes is not None:
+                    predictions["operating_regime"] = details.operating_regimes
                 prediction_frames.append(predictions)
 
     results = (
@@ -150,10 +183,20 @@ def main() -> None:
     )
     target_cap_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
     target_cap_diagnostics.to_csv(target_cap_diagnostics_out, index=False)
+    regime_diagnostics = None
+    if "operating_regime" in predictions.columns and predictions["operating_regime"].notna().any():
+        regime_diagnostics = summarize_operating_regime_diagnostics(predictions)
+        regime_diagnostics_out = args.regime_diagnostics_out or args.out.with_name(
+            f"{args.out.stem}_regime_diagnostics.csv"
+        )
+        regime_diagnostics_out.parent.mkdir(parents=True, exist_ok=True)
+        regime_diagnostics.to_csv(regime_diagnostics_out, index=False)
     print(results.round({"rmse": 2, "s_score": 2}).to_string(index=False))
     print(f"\nSaved results to {args.out}")
     print(f"Saved predictions to {predictions_out}")
     print(f"Saved target-cap diagnostics to {target_cap_diagnostics_out}")
+    if regime_diagnostics is not None:
+        print(f"Saved operating-regime diagnostics to {regime_diagnostics_out}")
 
 
 if __name__ == "__main__":

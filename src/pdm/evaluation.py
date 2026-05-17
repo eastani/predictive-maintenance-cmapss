@@ -79,6 +79,7 @@ class RegressorPredictionDetails:
     end_cycles: np.ndarray
     y_true: np.ndarray
     y_pred: np.ndarray
+    operating_regimes: np.ndarray | None = None
 
 
 def _last_test_cycle(test: pd.DataFrame, test_rul: pd.DataFrame) -> pd.DataFrame:
@@ -178,6 +179,11 @@ def evaluate_regressor_predictions(
         end_cycles=modelling.test_final["cycle"].to_numpy(dtype=np.int64),
         y_true=y_test,
         y_pred=predictions,
+        operating_regimes=(
+            modelling.test_final["op_regime"].to_numpy(dtype=np.int64)
+            if "op_regime" in modelling.test_final.columns
+            else None
+        ),
     )
 
 
